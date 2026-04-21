@@ -73,6 +73,6 @@ open /path/to/codex-opero/codex-opero.app
 ### 방법 2. quarantine 속성 제거
 
 ```bash
-xattr -dr com.apple.quarantine /path/to/codex-opero.app
-open /path/to/codex-opero.app
+xattr -dr com.apple.quarantine /Applications/codex-opero.app
+open /Applications/codex-opero.app
 ```
