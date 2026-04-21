@@ -1,0 +1,12 @@
+.DS_Store
+
+.build/
+.tmp-home/
+
+codex-opero.app/
+
+.swiftpm/
+Package.resolved
+
+*.swp
+*.swo
