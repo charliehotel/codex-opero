@@ -53,7 +53,7 @@ swift run codex-opero
 cd /path/to/codex-opero
 chmod +x Scripts/package_app.sh
 ./Scripts/package_app.sh
-open /path/to/codex-opero.app
+open /path/to/codex-opero/codex-opero.app
 ```
 
 스크립트는 `dist/codex-opero.dmg`도 함께 생성합니다.
