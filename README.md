@@ -56,6 +56,8 @@ chmod +x Scripts/package_app.sh
 open /path/to/codex-opero.app
 ```
 
+스크립트는 `dist/codex-opero.dmg`도 함께 생성합니다.
+
 ## unsigned `.app` 테스트
 
 현재 생성되는 `.app`는 unsigned 개발용 빌드입니다.  
