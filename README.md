@@ -26,6 +26,10 @@ Instead, it reuses existing local authentication state and only fetches usage.
 
 That means Codex or Claude must already be logged in on the local machine.
 
+If you use `Claude`, macOS may ask for your password when the app first tries to read the Keychain credential.  
+Because `codex-opero` refreshes every minute, choosing `Allow` can cause repeated prompts.  
+To avoid that, choose `Always Allow` for `codex-opero` when macOS asks for access to the Claude credential.
+
 ## Run
 
 ### CLI check
