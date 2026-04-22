@@ -3,12 +3,11 @@ import Foundation
 public enum QuotaFormatter {
     public static func resetString(for window: QuotaWindow) -> String {
         guard let resetAt = window.resetAt else {
-            return "unknown reset"
+            return "reset unknown"
         }
 
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return "resets \(formatter.localizedString(for: resetAt, relativeTo: Date()))"
+        let seconds = max(0, Int(resetAt.timeIntervalSinceNow.rounded()))
+        return "resets in \(shortIntervalString(seconds: seconds))"
     }
 
     public static func timestampString(_ date: Date?) -> String {
@@ -17,5 +16,22 @@ public enum QuotaFormatter {
         formatter.dateStyle = .none
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+
+    private static func shortIntervalString(seconds: Int) -> String {
+        let day = 86_400
+        let hour = 3_600
+        let minute = 60
+
+        if seconds >= day {
+            return "\(seconds / day)d"
+        }
+        if seconds >= hour {
+            return "\(seconds / hour)h"
+        }
+        if seconds >= minute {
+            return "\(seconds / minute)m"
+        }
+        return "<1m"
     }
 }
