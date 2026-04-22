@@ -16,6 +16,7 @@ SOURCE_PLIST="${ROOT_DIR}/Resources/Info.plist"
 TARGET_PLIST="${CONTENTS_DIR}/Info.plist"
 EXECUTABLE_PATH="${RELEASE_DIR}/${PRODUCT_NAME}"
 ICON_SOURCE="${ROOT_DIR}/icon.png"
+TRAY_ICON_SOURCES=("${ROOT_DIR}"/Resources/TrayIcon-*.png)
 ICONSET_DIR="${BUILD_DIR}/AppIcon.iconset"
 ICON_FILE="${RESOURCES_DIR}/AppIcon.icns"
 STAGING_DIR="${BUILD_DIR}/dmg-staging"
@@ -60,6 +61,11 @@ build_app_bundle() {
     cp "${EXECUTABLE_PATH}" "${MACOS_DIR}/${PRODUCT_NAME}"
     cp "${SOURCE_PLIST}" "${TARGET_PLIST}"
     iconutil -c icns "${ICONSET_DIR}" -o "${ICON_FILE}"
+    for tray_icon in "${TRAY_ICON_SOURCES[@]}"; do
+        if [[ -f "${tray_icon}" ]]; then
+            cp "${tray_icon}" "${RESOURCES_DIR}/"
+        fi
+    done
 
     chmod +x "${MACOS_DIR}/${PRODUCT_NAME}"
 }
