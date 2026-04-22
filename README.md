@@ -78,9 +78,12 @@ open /Applications/codex-opero.app
 ## Quick Start from Source
 
 ```bash
-cd /path/to/codex-opero
+git clone https://github.com/charliehotel/codex-opero.git
+cd codex-opero
 swift run codex-opero
 ```
+
+Requires macOS and an existing Codex, Claude, or Gemini login on the local machine.
 
 ## Screenshot History
 

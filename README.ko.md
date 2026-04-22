@@ -78,9 +78,12 @@ open /Applications/codex-opero.app
 ## 소스에서 빠르게 실행
 
 ```bash
-cd /path/to/codex-opero
+git clone https://github.com/charliehotel/codex-opero.git
+cd codex-opero
 swift run codex-opero
 ```
+
+macOS 환경과 로컬의 기존 Codex, Claude, 또는 Gemini 로그인 상태가 필요합니다.
 
 ## 스크린샷 히스토리
 
