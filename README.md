@@ -33,7 +33,7 @@ If you use `Claude`, macOS may ask for your password when the app first tries to
 Because `codex-opero` refreshes every minute, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose `Always Allow` for `codex-opero` when macOS asks for access to the Claude credential.
 
-## Install
+## Install from Release
 
 The easiest way to use `codex-opero` is from the GitHub release.
 
@@ -61,36 +61,9 @@ xattr -dr com.apple.quarantine /Applications/codex-opero.app
 open /Applications/codex-opero.app
 ```
 
-## Run from source
-
-### CLI check
-
-```bash
-cd /path/to/codex-opero
-swift run codex-opero-cli
-```
-
-Example:
-
-```text
-Codex: 80%/94%
-Claude: --/-- (credentials missing)
-```
-
-### Run the menu bar app
+## Quick Start from Source
 
 ```bash
 cd /path/to/codex-opero
 swift run codex-opero
 ```
-
-### Build the `.app`
-
-```bash
-cd /path/to/codex-opero
-chmod +x Scripts/package_app.sh
-./Scripts/package_app.sh
-open /path/to/codex-opero/codex-opero.app
-```
-
-The script also creates `dist/codex-opero.dmg`.

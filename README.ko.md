@@ -33,7 +33,7 @@
 `codex-opero`는 1분마다 새로고침하므로 `허용`만 선택하면 이후에도 반복해서 프롬프트가 나타날 수 있습니다.  
 반복 입력을 피하려면 Claude credential 접근 요청이 뜰 때 `codex-opero`에 대해 `항상 허용`을 선택하시는 편이 좋습니다.
 
-## 설치 방법
+## 릴리즈에서 설치
 
 일반 사용자는 GitHub 릴리즈에서 `.dmg`를 내려받아 설치하는 방식이 가장 편합니다.
 
@@ -61,36 +61,9 @@ xattr -dr com.apple.quarantine /Applications/codex-opero.app
 open /Applications/codex-opero.app
 ```
 
-## 소스에서 실행
-
-### CLI 확인
-
-```bash
-cd /path/to/codex-opero
-swift run codex-opero-cli
-```
-
-예시:
-
-```text
-Codex: 80%/94%
-Claude: --/-- (credentials missing)
-```
-
-### 메뉴 막대 앱 실행
+## 소스에서 빠르게 실행
 
 ```bash
 cd /path/to/codex-opero
 swift run codex-opero
 ```
-
-### `.app` 만들기
-
-```bash
-cd /path/to/codex-opero
-chmod +x Scripts/package_app.sh
-./Scripts/package_app.sh
-open /path/to/codex-opero/codex-opero.app
-```
-
-스크립트는 `dist/codex-opero.dmg`도 함께 생성합니다.
