@@ -12,7 +12,9 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 - Shows the selected provider's remaining usage in a compact two-value format from the menu bar
 - Lets you choose between `Codex`, `Claude`, and `Gemini`
 - Remembers the last selected provider
-- Supports `Auto Rotate` to cycle through available providers every 30 seconds
+- Supports `Auto Rotate` to cycle through available providers at a configurable interval
+- Lets you choose the refresh interval from preset options in the menu
+- Lets you choose the auto-rotate interval from preset options in the menu
 - Refreshes automatically every minute and also supports `Refresh Now`
 - Supports `Launch at Login` when running as a packaged `.app`
 - Falls back to `--/--` when usage lookup fails
@@ -37,11 +39,14 @@ To avoid that, choose `Always Allow` for `codex-opero` when macOS asks for acces
 ## Auto Rotate
 
 `Auto Rotate` is off by default.  
-When enabled, `codex-opero` rotates through available providers every 30 seconds in this order:
+When enabled, `codex-opero` rotates through available providers in this order:
 
 - `Codex`
 - `Claude`
 - `Gemini`
+
+You can choose the refresh interval from preset options such as `1 min`, `3 min`, `5 min`, and `15 min`.  
+You can also choose the auto-rotate interval from preset options such as `10 sec`, `30 sec`, and `60 sec`.
 
 Providers that are currently unavailable and showing `--/--` are skipped automatically.  
 If the menu is open, rotation pauses until the menu closes.  

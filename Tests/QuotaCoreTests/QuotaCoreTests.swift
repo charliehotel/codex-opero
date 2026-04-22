@@ -9,6 +9,16 @@ func remainingPercentIsClamped() {
 }
 
 @Test
+func resetStringUsesEnglishCompactUnits() {
+    let window = QuotaWindow(
+        name: "5h",
+        usedPercent: 16,
+        resetAt: Date().addingTimeInterval(4 * 60 * 60)
+    )
+    #expect(QuotaFormatter.resetString(for: window) == "resets in 4h")
+}
+
+@Test
 func loadedSnapshotUsesCompactMenuTitle() {
     let quota = ProviderQuota(
         providerID: .codex,
@@ -101,4 +111,30 @@ func autoRotateSettingPersistsAcrossStoreInstances() {
 
     let secondStore = QuotaStore(defaults: defaults)
     #expect(secondStore.autoRotateEnabled)
+}
+
+@MainActor
+@Test
+func refreshIntervalPersistsAcrossStoreInstances() {
+    let defaults = UserDefaults(suiteName: "QuotaCoreTests.refreshInterval")!
+    defaults.removePersistentDomain(forName: "QuotaCoreTests.refreshInterval")
+
+    let firstStore = QuotaStore(defaults: defaults)
+    firstStore.refreshIntervalSeconds = 300
+
+    let secondStore = QuotaStore(defaults: defaults)
+    #expect(secondStore.refreshIntervalSeconds == 300)
+}
+
+@MainActor
+@Test
+func autoRotateIntervalPersistsAcrossStoreInstances() {
+    let defaults = UserDefaults(suiteName: "QuotaCoreTests.autoRotateInterval")!
+    defaults.removePersistentDomain(forName: "QuotaCoreTests.autoRotateInterval")
+
+    let firstStore = QuotaStore(defaults: defaults)
+    firstStore.autoRotateIntervalSeconds = 60
+
+    let secondStore = QuotaStore(defaults: defaults)
+    #expect(secondStore.autoRotateIntervalSeconds == 60)
 }

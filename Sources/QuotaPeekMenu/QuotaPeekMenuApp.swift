@@ -67,9 +67,34 @@ private struct ContentView: View {
 
             Divider()
 
-            Toggle("Auto Rotate", isOn: $store.autoRotateEnabled)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Refresh")
+                    Spacer()
+                    Picker("Refresh", selection: $store.refreshIntervalSeconds) {
+                        ForEach(QuotaStore.refreshIntervalOptions, id: \.self) { seconds in
+                            Text(QuotaStore.label(forRefreshIntervalSeconds: seconds)).tag(seconds)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 110)
+                }
 
-            Text("Rotates every 30 seconds and skips unavailable providers.")
+                Toggle("Auto Rotate", isOn: $store.autoRotateEnabled)
+
+                if store.autoRotateEnabled {
+                    Picker("Rotate Interval", selection: $store.autoRotateIntervalSeconds) {
+                        ForEach(QuotaStore.autoRotateIntervalOptions, id: \.self) { seconds in
+                            Text(QuotaStore.label(forAutoRotateIntervalSeconds: seconds)).tag(seconds)
+                        }
+                    }
+                    .pickerStyle(.radioGroup)
+                }
+            }
+
+            Divider()
+
+            Text("Refresh rate is global. Auto Rotate skips unavailable providers.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

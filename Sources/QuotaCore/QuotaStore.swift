@@ -4,6 +4,9 @@ import Observation
 @MainActor
 @Observable
 public final class QuotaStore {
+    public static let refreshIntervalOptions: [Int] = [60, 180, 300, 900]
+    public static let autoRotateIntervalOptions: [Int] = [10, 30, 60]
+
     public private(set) var snapshots: [ProviderSnapshot]
     public private(set) var lastRefresh: Date?
     public var selectedProviderID: ProviderID {
@@ -16,29 +19,41 @@ public final class QuotaStore {
             defaults.set(autoRotateEnabled, forKey: Self.autoRotateEnabledDefaultsKey)
         }
     }
+    public var refreshIntervalSeconds: Int {
+        didSet {
+            guard oldValue != refreshIntervalSeconds else { return }
+            defaults.set(refreshIntervalSeconds, forKey: Self.refreshIntervalDefaultsKey)
+            restartRefreshTaskIfNeeded()
+        }
+    }
+    public var autoRotateIntervalSeconds: Int {
+        didSet {
+            guard oldValue != autoRotateIntervalSeconds else { return }
+            defaults.set(autoRotateIntervalSeconds, forKey: Self.autoRotateIntervalDefaultsKey)
+            restartRotateTaskIfNeeded()
+        }
+    }
 
     private let providers: [any UsageProvider]
     private var refreshTask: Task<Void, Never>?
     private var rotateTask: Task<Void, Never>?
-    private let refreshInterval: Duration
-    private let rotateInterval: Duration
     private let defaults: UserDefaults
     private var isMenuPresented = false
 
     static let selectedProviderDefaultsKey = "selectedProviderID"
     static let autoRotateEnabledDefaultsKey = "autoRotateEnabled"
+    static let refreshIntervalDefaultsKey = "refreshIntervalSeconds"
+    static let autoRotateIntervalDefaultsKey = "autoRotateIntervalSeconds"
 
     public init(
         providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), GeminiProvider()],
         selectedProviderID: ProviderID = .codex,
-        refreshInterval: Duration = .seconds(60),
-        rotateInterval: Duration = .seconds(30),
+        refreshIntervalSeconds: Int = 60,
+        autoRotateIntervalSeconds: Int = 30,
         defaults: UserDefaults = .standard
     ) {
         self.providers = providers
         self.defaults = defaults
-        self.refreshInterval = refreshInterval
-        self.rotateInterval = rotateInterval
         if let persisted = defaults.string(forKey: Self.selectedProviderDefaultsKey),
            let providerID = ProviderID(rawValue: persisted) {
             self.selectedProviderID = providerID
@@ -46,24 +61,25 @@ public final class QuotaStore {
             self.selectedProviderID = selectedProviderID
         }
         self.autoRotateEnabled = defaults.bool(forKey: Self.autoRotateEnabledDefaultsKey)
+        let persistedRefresh = defaults.integer(forKey: Self.refreshIntervalDefaultsKey)
+        if Self.refreshIntervalOptions.contains(persistedRefresh) {
+            self.refreshIntervalSeconds = persistedRefresh
+        } else {
+            self.refreshIntervalSeconds = refreshIntervalSeconds
+        }
+        let persistedRotate = defaults.integer(forKey: Self.autoRotateIntervalDefaultsKey)
+        if Self.autoRotateIntervalOptions.contains(persistedRotate) {
+            self.autoRotateIntervalSeconds = persistedRotate
+        } else {
+            self.autoRotateIntervalSeconds = autoRotateIntervalSeconds
+        }
         self.snapshots = providers.map { ProviderSnapshot(providerID: $0.providerID) }
     }
 
     public func start() {
         guard refreshTask == nil, rotateTask == nil else { return }
-        refreshTask = Task {
-            await refresh()
-            while Task.isCancelled == false {
-                try? await Task.sleep(for: refreshInterval)
-                await refresh()
-            }
-        }
-        rotateTask = Task {
-            while Task.isCancelled == false {
-                try? await Task.sleep(for: rotateInterval)
-                rotateToNextProviderIfNeeded()
-            }
-        }
+        startRefreshTask()
+        startRotateTask()
     }
 
     public func stop() {
@@ -71,6 +87,37 @@ public final class QuotaStore {
         refreshTask = nil
         rotateTask?.cancel()
         rotateTask = nil
+    }
+
+    private func startRefreshTask() {
+        refreshTask = Task {
+            await refresh()
+            while Task.isCancelled == false {
+                try? await Task.sleep(for: .seconds(refreshIntervalSeconds))
+                await refresh()
+            }
+        }
+    }
+
+    private func startRotateTask() {
+        rotateTask = Task {
+            while Task.isCancelled == false {
+                try? await Task.sleep(for: .seconds(autoRotateIntervalSeconds))
+                rotateToNextProviderIfNeeded()
+            }
+        }
+    }
+
+    private func restartRefreshTaskIfNeeded() {
+        guard refreshTask != nil else { return }
+        refreshTask?.cancel()
+        startRefreshTask()
+    }
+
+    private func restartRotateTaskIfNeeded() {
+        guard rotateTask != nil else { return }
+        rotateTask?.cancel()
+        startRotateTask()
     }
 
     public func refresh() async {
@@ -117,6 +164,42 @@ public final class QuotaStore {
 
     public func setMenuPresented(_ presented: Bool) {
         isMenuPresented = presented
+    }
+
+    public var refreshIntervalLabel: String {
+        Self.label(forRefreshIntervalSeconds: refreshIntervalSeconds)
+    }
+
+    public var autoRotateIntervalLabel: String {
+        Self.label(forAutoRotateIntervalSeconds: autoRotateIntervalSeconds)
+    }
+
+    public static func label(forRefreshIntervalSeconds seconds: Int) -> String {
+        switch seconds {
+        case 60:
+            return "1 min"
+        case 180:
+            return "3 min"
+        case 300:
+            return "5 min"
+        case 900:
+            return "15 min"
+        default:
+            return "\(seconds) sec"
+        }
+    }
+
+    public static func label(forAutoRotateIntervalSeconds seconds: Int) -> String {
+        switch seconds {
+        case 10:
+            return "10 sec"
+        case 30:
+            return "30 sec"
+        case 60:
+            return "60 sec"
+        default:
+            return "\(seconds) sec"
+        }
     }
 
     func rotateToNextProviderIfNeeded() {
