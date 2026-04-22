@@ -20,7 +20,7 @@ public final class QuotaStore {
     static let selectedProviderDefaultsKey = "selectedProviderID"
 
     public init(
-        providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider()],
+        providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), GeminiProvider()],
         selectedProviderID: ProviderID = .codex,
         refreshInterval: Duration = .seconds(60),
         defaults: UserDefaults = .standard

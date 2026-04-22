@@ -9,8 +9,8 @@
 
 ## 핵심 기능
 
-- 메뉴 막대에 선택된 provider의 남은 사용량을 `5시간/주간` 형식으로 표시합니다
-- `Codex`, `Claude` 중 하나를 선택해서 메뉴 막대에 띄울 수 있습니다
+- 메뉴 막대에 선택된 provider의 남은 사용량을 두 칸 숫자 형식으로 간단히 표시합니다
+- `Codex`, `Claude`, `Gemini` 중 하나를 선택해서 메뉴 막대에 띄울 수 있습니다
 - 마지막으로 선택한 provider를 기억합니다
 - 1분마다 자동 새로고침하며, `Refresh Now`도 지원합니다
 - 패키징된 `.app`에서는 `Launch at Login` 토글을 사용할 수 있습니다
@@ -23,8 +23,11 @@
 
 - `Codex`: `~/.codex/auth.json` 사용
 - `Claude`: macOS Keychain의 `Claude Code-credentials` 또는 `~/.claude/.credentials.json` 사용
+- `Gemini`: `~/.gemini/oauth_creds.json`과 Gemini Code Assist quota endpoint 사용
 
-즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex 또는 Claude에 로그인 되어 있어야 합니다.
+즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex, Claude, 또는 Gemini에 로그인 되어 있어야 합니다.
+
+`Gemini`의 경우 현재 두 칸 숫자는 Codex/Claude의 `5시간 / 주간` 구조와 동일하지 않고, 대표적인 `Pro / Flash` quota bucket을 기준으로 표시합니다.
 
 `Claude`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.  
 `codex-opero`는 1분마다 새로고침하므로 `허용`만 선택하면 이후에도 반복해서 프롬프트가 나타날 수 있습니다.  

@@ -21,6 +21,11 @@ func loadedSnapshotUsesCompactMenuTitle() {
     #expect(snapshot.menuTitle == "84%/94%")
 }
 
+@Test
+func geminiProviderIDHasDisplayName() {
+    #expect(ProviderID.gemini.displayName == "Gemini")
+}
+
 @MainActor
 @Test
 func selectedProviderPersistsAcrossStoreInstances() {

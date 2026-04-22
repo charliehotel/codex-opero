@@ -9,8 +9,8 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 
 ## Highlights
 
-- Shows the selected provider's remaining usage in a `5-hour/weekly` format from the menu bar
-- Lets you choose between `Codex` and `Claude`
+- Shows the selected provider's remaining usage in a compact two-value format from the menu bar
+- Lets you choose between `Codex`, `Claude`, and `Gemini`
 - Remembers the last selected provider
 - Refreshes automatically every minute and also supports `Refresh Now`
 - Supports `Launch at Login` when running as a packaged `.app`
@@ -23,8 +23,11 @@ Instead, it reuses existing local authentication state and only fetches usage.
 
 - `Codex`: uses `~/.codex/auth.json`
 - `Claude`: uses the macOS Keychain item `Claude Code-credentials` or `~/.claude/.credentials.json`
+- `Gemini`: uses `~/.gemini/oauth_creds.json` and Gemini Code Assist quota endpoints
 
-That means Codex or Claude must already be logged in on the local machine.
+That means Codex, Claude, or Gemini must already be logged in on the local machine.
+
+For `Gemini`, the two displayed values currently map to representative `Pro / Flash` quota buckets rather than the same `5-hour / weekly` windows used by Codex and Claude.
 
 If you use `Claude`, macOS may ask for your password when the app first tries to read the Keychain credential.  
 Because `codex-opero` refreshes every minute, choosing `Allow` can cause repeated prompts.  
