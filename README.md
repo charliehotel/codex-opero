@@ -15,7 +15,7 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 - Supports `Auto Rotate` to cycle through available providers at a configurable interval
 - Lets you choose the refresh interval from preset options in the menu
 - Lets you choose the auto-rotate interval from preset options in the menu
-- Refreshes automatically every minute and also supports `Refresh Now`
+- Refreshes automatically at the configured interval and also supports `Refresh Now`
 - Supports `Launch at Login` when running as a packaged `.app`
 - Falls back to `--/--` when usage lookup fails
 
@@ -33,7 +33,7 @@ That means Codex, Claude, or Gemini must already be logged in on the local machi
 For `Gemini`, the two displayed values currently map to representative `Pro / Flash` quota buckets rather than the same `5-hour / weekly` windows used by Codex and Claude.
 
 If you use `Claude`, macOS may ask for your password when the app first tries to read the Keychain credential.  
-Because `codex-opero` refreshes every minute, choosing `Allow` can cause repeated prompts.  
+Because `codex-opero` refreshes on a recurring interval, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose `Always Allow` for `codex-opero` when macOS asks for access to the Claude credential.
 
 ## Auto Rotate

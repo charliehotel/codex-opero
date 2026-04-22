@@ -15,7 +15,7 @@
 - `Auto Rotate`를 켜면 사용 가능한 provider를 설정한 간격으로 자동 순환합니다
 - 메뉴에서 refresh 간격을 프리셋으로 선택할 수 있습니다
 - 메뉴에서 auto rotate 간격을 프리셋으로 선택할 수 있습니다
-- 1분마다 자동 새로고침하며, `Refresh Now`도 지원합니다
+- 설정한 간격으로 자동 새로고침하며, `Refresh Now`도 지원합니다
 - 패키징된 `.app`에서는 `Launch at Login` 토글을 사용할 수 있습니다
 - 조회에 실패하면 `--/--`로 표시합니다
 
@@ -33,7 +33,7 @@
 `Gemini`의 경우 현재 두 칸 숫자는 Codex/Claude의 `5시간 / 주간` 구조와 동일하지 않고, 대표적인 `Pro / Flash` quota bucket을 기준으로 표시합니다.
 
 `Claude`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.  
-`codex-opero`는 1분마다 새로고침하므로 `허용`만 선택하면 이후에도 반복해서 프롬프트가 나타날 수 있습니다.  
+`codex-opero`는 일정 간격으로 새로고침하므로 `허용`만 선택하면 이후에도 반복해서 프롬프트가 나타날 수 있습니다.  
 반복 입력을 피하려면 Claude credential 접근 요청이 뜰 때 `codex-opero`에 대해 `항상 허용`을 선택하시는 편이 좋습니다.
 
 ## Auto Rotate
