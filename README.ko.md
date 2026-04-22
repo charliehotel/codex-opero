@@ -5,13 +5,14 @@
 `codex-opero`는 macOS 메뉴 막대에서 AI 사용량을 `57%/90%`처럼 바로 보여주는 작은 앱입니다.  
 복잡한 대시보드 대신, 지금 필요한 숫자만 빠르게 확인하는 데 초점을 두었습니다.
 
-![codex-opero screenshot](./Screenshot_v0.1.1.png)
+![codex-opero screenshot](./Screenshot_v0.1.2.png)
 
 ## 핵심 기능
 
 - 메뉴 막대에 선택된 provider의 남은 사용량을 두 칸 숫자 형식으로 간단히 표시합니다
 - `Codex`, `Claude`, `Gemini` 중 하나를 선택해서 메뉴 막대에 띄울 수 있습니다
 - 마지막으로 선택한 provider를 기억합니다
+- `Auto Rotate`를 켜면 사용 가능한 provider를 30초 간격으로 자동 순환합니다
 - 1분마다 자동 새로고침하며, `Refresh Now`도 지원합니다
 - 패키징된 `.app`에서는 `Launch at Login` 토글을 사용할 수 있습니다
 - 조회에 실패하면 `--/--`로 표시합니다
@@ -32,6 +33,19 @@
 `Claude`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.  
 `codex-opero`는 1분마다 새로고침하므로 `허용`만 선택하면 이후에도 반복해서 프롬프트가 나타날 수 있습니다.  
 반복 입력을 피하려면 Claude credential 접근 요청이 뜰 때 `codex-opero`에 대해 `항상 허용`을 선택하시는 편이 좋습니다.
+
+## Auto Rotate
+
+`Auto Rotate`는 기본값이 꺼져 있습니다.  
+켜면 아래 순서대로 사용 가능한 provider를 30초 간격으로 자동 순환합니다.
+
+- `Codex`
+- `Claude`
+- `Gemini`
+
+현재 `--/--`로 표시되는 조회 실패 provider는 자동으로 건너뜁니다.  
+메뉴가 열려 있는 동안에는 순환이 잠시 멈추고, 메뉴를 닫으면 다시 이어집니다.  
+새로고침 중에는 마지막 성공 스냅샷을 계속 보여주고, 실제로 refresh가 실패한 경우에만 `--/--`로 fallback합니다.
 
 ## 릴리즈에서 설치
 
@@ -67,3 +81,9 @@ open /Applications/codex-opero.app
 cd /path/to/codex-opero
 swift run codex-opero
 ```
+
+## 스크린샷 히스토리
+
+- [v0.1.0](./Screenshot_v0.1.0.png)
+- [v0.1.1](./Screenshot_v0.1.1.png)
+- [v0.1.2](./Screenshot_v0.1.2.png)

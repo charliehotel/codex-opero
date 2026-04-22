@@ -5,13 +5,14 @@
 `codex-opero` is a minimal macOS menu bar app that shows AI usage as a compact string like `57%/90%`.  
 Instead of a full dashboard, it focuses on one thing: letting you check the numbers you need at a glance.
 
-![codex-opero screenshot](./Screenshot_v0.1.1.png)
+![codex-opero screenshot](./Screenshot_v0.1.2.png)
 
 ## Highlights
 
 - Shows the selected provider's remaining usage in a compact two-value format from the menu bar
 - Lets you choose between `Codex`, `Claude`, and `Gemini`
 - Remembers the last selected provider
+- Supports `Auto Rotate` to cycle through available providers every 30 seconds
 - Refreshes automatically every minute and also supports `Refresh Now`
 - Supports `Launch at Login` when running as a packaged `.app`
 - Falls back to `--/--` when usage lookup fails
@@ -32,6 +33,19 @@ For `Gemini`, the two displayed values currently map to representative `Pro / Fl
 If you use `Claude`, macOS may ask for your password when the app first tries to read the Keychain credential.  
 Because `codex-opero` refreshes every minute, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose `Always Allow` for `codex-opero` when macOS asks for access to the Claude credential.
+
+## Auto Rotate
+
+`Auto Rotate` is off by default.  
+When enabled, `codex-opero` rotates through available providers every 30 seconds in this order:
+
+- `Codex`
+- `Claude`
+- `Gemini`
+
+Providers that are currently unavailable and showing `--/--` are skipped automatically.  
+If the menu is open, rotation pauses until the menu closes.  
+During refresh, the app keeps showing the last successful snapshot and only falls back to `--/--` if a provider refresh actually fails.
 
 ## Install from Release
 
@@ -67,3 +81,9 @@ open /Applications/codex-opero.app
 cd /path/to/codex-opero
 swift run codex-opero
 ```
+
+## Screenshot History
+
+- [v0.1.0](./Screenshot_v0.1.0.png)
+- [v0.1.1](./Screenshot_v0.1.1.png)
+- [v0.1.2](./Screenshot_v0.1.2.png)
