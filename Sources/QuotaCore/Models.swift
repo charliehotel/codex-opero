@@ -51,7 +51,7 @@ public struct ProviderQuota: Equatable, Sendable {
 
 public enum ProviderStatus: Equatable, Sendable {
     case idle
-    case loading
+    case loading(ProviderQuota?)
     case loaded(ProviderQuota)
     case failed(String)
 }
@@ -71,7 +71,10 @@ public struct ProviderSnapshot: Equatable, Identifiable, Sendable {
         switch status {
         case .loaded(let quota):
             return "\(quota.primary.remainingPercent)%/\(quota.secondary.remainingPercent)%"
-        case .loading:
+        case .loading(let previousQuota):
+            if let previousQuota {
+                return "\(previousQuota.primary.remainingPercent)%/\(previousQuota.secondary.remainingPercent)%"
+            }
             return "--/--"
         case .idle:
             return "--/--"
@@ -80,16 +83,52 @@ public struct ProviderSnapshot: Equatable, Identifiable, Sendable {
         }
     }
 
+    public var primaryMenuValue: String {
+        switch status {
+        case .loaded(let quota):
+            return "\(quota.primary.remainingPercent)%"
+        case .loading(let previousQuota):
+            return previousQuota.map { "\($0.primary.remainingPercent)%" } ?? "--"
+        case .idle, .failed:
+            return "--"
+        }
+    }
+
+    public var secondaryMenuValue: String {
+        switch status {
+        case .loaded(let quota):
+            return "\(quota.secondary.remainingPercent)%"
+        case .loading(let previousQuota):
+            return previousQuota.map { "\($0.secondary.remainingPercent)%" } ?? "--"
+        case .idle, .failed:
+            return "--"
+        }
+    }
+
     public var detailLine: String {
         switch status {
         case .loaded(let quota):
             return "\(providerID.displayName)  \(quota.primary.remainingPercent)% / \(quota.secondary.remainingPercent)%"
-        case .loading:
+        case .loading(let previousQuota):
+            if let previousQuota {
+                return "\(providerID.displayName)  \(previousQuota.primary.remainingPercent)% / \(previousQuota.secondary.remainingPercent)%"
+            }
             return "\(providerID.displayName)  refreshing..."
         case .idle:
             return "\(providerID.displayName)  waiting"
         case .failed(let message):
             return "\(providerID.displayName)  \(message)"
+        }
+    }
+
+    public var quota: ProviderQuota? {
+        switch status {
+        case .loaded(let quota):
+            return quota
+        case .loading(let previousQuota):
+            return previousQuota
+        case .idle, .failed:
+            return nil
         }
     }
 }
