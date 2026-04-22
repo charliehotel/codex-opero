@@ -3,6 +3,7 @@
 .build/
 .tmp-home/
 dist/
+.omx/
 
 codex-opero.app/
 
