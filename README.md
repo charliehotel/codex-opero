@@ -30,7 +30,35 @@ If you use `Claude`, macOS may ask for your password when the app first tries to
 Because `codex-opero` refreshes every minute, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose `Always Allow` for `codex-opero` when macOS asks for access to the Claude credential.
 
-## Run
+## Install
+
+The easiest way to use `codex-opero` is from the GitHub release.
+
+1. Download the latest `.dmg` from [Releases](https://github.com/charliehotel/codex-opero/releases)
+2. Open the `.dmg`
+3. Drag `codex-opero.app` into the `Applications` folder
+4. Launch `codex-opero.app` from `Applications`
+
+## If macOS blocks the app
+
+`codex-opero` is currently distributed as an unsigned app.  
+If macOS blocks it, use one of the following methods.  
+Only do this for builds you trust.
+
+### Option 1. Open from Finder
+
+1. Right-click `codex-opero.app`
+2. Select `Open`
+3. If macOS shows a warning, choose `Open` again
+
+### Option 2. Remove quarantine
+
+```bash
+xattr -dr com.apple.quarantine /Applications/codex-opero.app
+open /Applications/codex-opero.app
+```
+
+## Run from source
 
 ### CLI check
 
@@ -63,22 +91,3 @@ open /path/to/codex-opero/codex-opero.app
 ```
 
 The script also creates `dist/codex-opero.dmg`.
-
-## Testing the unsigned `.app`
-
-The generated `.app` is currently an unsigned development build.  
-If macOS blocks it, use one of the following methods.  
-Only do this for builds you trust.
-
-### Option 1. Open from Finder
-
-1. Right-click `codex-opero.app`
-2. Select `Open`
-3. If macOS shows a warning, choose `Open` again
-
-### Option 2. Remove quarantine
-
-```bash
-xattr -dr com.apple.quarantine /Applications/codex-opero.app
-open /Applications/codex-opero.app
-```

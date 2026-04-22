@@ -30,7 +30,35 @@
 `codex-opero`는 1분마다 새로고침하므로 `허용`만 선택하면 이후에도 반복해서 프롬프트가 나타날 수 있습니다.  
 반복 입력을 피하려면 Claude credential 접근 요청이 뜰 때 `codex-opero`에 대해 `항상 허용`을 선택하시는 편이 좋습니다.
 
-## 실행 방법
+## 설치 방법
+
+일반 사용자는 GitHub 릴리즈에서 `.dmg`를 내려받아 설치하는 방식이 가장 편합니다.
+
+1. [Releases](https://github.com/charliehotel/codex-opero/releases)에서 최신 `.dmg`를 다운로드합니다
+2. `.dmg`를 엽니다
+3. `codex-opero.app`를 `Applications` 폴더로 드래그합니다
+4. `Applications` 폴더에서 `codex-opero.app`를 실행합니다
+
+## macOS가 실행을 막을 때
+
+현재 배포되는 `codex-opero`는 unsigned 앱입니다.  
+macOS가 실행을 막으면 아래 방법 중 하나를 사용하실 수 있습니다.
+(이 방법은 직접 빌드했거나, 출처를 신뢰할 수 있는 앱에만 사용하시는 것을 권장드립니다.)
+
+### 방법 1. Finder에서 열기
+
+1. `codex-opero.app`를 우클릭합니다.
+2. `열기`를 선택합니다.
+3. 경고가 나오면 다시 한 번 `열기`를 선택합니다.
+
+### 방법 2. quarantine 속성 제거
+
+```bash
+xattr -dr com.apple.quarantine /Applications/codex-opero.app
+open /Applications/codex-opero.app
+```
+
+## 소스에서 실행
 
 ### CLI 확인
 
@@ -63,22 +91,3 @@ open /path/to/codex-opero/codex-opero.app
 ```
 
 스크립트는 `dist/codex-opero.dmg`도 함께 생성합니다.
-
-## unsigned `.app` 테스트
-
-현재 생성되는 `.app`는 unsigned 개발용 빌드입니다.  
-테스트 시 macOS가 실행을 막으면 아래 방법 중 하나를 사용하실 수 있습니다.
-(이 방법은 직접 빌드했거나, 출처를 신뢰할 수 있는 앱에만 사용하시는 것을 권장드립니다.)
-
-### 방법 1. Finder에서 열기
-
-1. `codex-opero.app`를 우클릭합니다.
-2. `열기`를 선택합니다.
-3. 경고가 나오면 다시 한 번 `열기`를 선택합니다.
-
-### 방법 2. quarantine 속성 제거
-
-```bash
-xattr -dr com.apple.quarantine /Applications/codex-opero.app
-open /Applications/codex-opero.app
-```
