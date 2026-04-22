@@ -66,6 +66,7 @@ build_app_bundle() {
 
 build_dmg() {
     mkdir -p "${DIST_DIR}"
+    find "${DIST_DIR}" -name ".DS_Store" -delete 2>/dev/null || true
     rm -rf "${APP_ARCHIVE_PATH}"
     rm -rf "${STAGING_DIR}"
     mkdir -p "${STAGING_DIR}"
@@ -81,6 +82,8 @@ build_dmg() {
         -ov \
         -format UDZO \
         "${DMG_PATH}" >/dev/null
+
+    find "${DIST_DIR}" -name ".DS_Store" -delete 2>/dev/null || true
 }
 
 build_app_bundle
