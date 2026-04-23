@@ -4,6 +4,7 @@ import QuotaCore
 
 @main
 struct QuotaPeekMenuApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var store = QuotaStore()
     @State private var loginItemManager = LoginItemManager()
 
@@ -17,6 +18,12 @@ struct QuotaPeekMenuApp: App {
             )
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        OnboardingWindowController.shared.showIfNeeded()
     }
 }
 

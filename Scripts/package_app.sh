@@ -17,6 +17,7 @@ TARGET_PLIST="${CONTENTS_DIR}/Info.plist"
 EXECUTABLE_PATH="${RELEASE_DIR}/${PRODUCT_NAME}"
 ICON_SOURCE="${ROOT_DIR}/icon.png"
 TRAY_ICON_SOURCES=("${ROOT_DIR}"/Resources/TrayIcon-*.png)
+POPUP_IMAGE_SOURCE="${ROOT_DIR}/Resources/popup.png"
 ICONSET_DIR="${BUILD_DIR}/AppIcon.iconset"
 ICON_FILE="${RESOURCES_DIR}/AppIcon.icns"
 STAGING_DIR="${BUILD_DIR}/dmg-staging"
@@ -66,6 +67,9 @@ build_app_bundle() {
             cp "${tray_icon}" "${RESOURCES_DIR}/"
         fi
     done
+    if [[ -f "${POPUP_IMAGE_SOURCE}" ]]; then
+        cp "${POPUP_IMAGE_SOURCE}" "${RESOURCES_DIR}/"
+    fi
 
     chmod +x "${MACOS_DIR}/${PRODUCT_NAME}"
 }
