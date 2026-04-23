@@ -5,12 +5,13 @@
 `codex-opero` is a minimal macOS menu bar app that shows AI usage as a compact string like `57%/90%`.  
 Instead of a full dashboard, it focuses on one thing: letting you check the numbers you need at a glance.
 
-<table>
-  <tr>
-    <td><img src="./Screenshot_v0.1.4.png" alt="codex-opero first-run popup" /></td>
-    <td><img src="./Screenshot_v0.1.3.png" alt="codex-opero menu bar usage" /></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="./Screenshot_v0.1.3.png" alt="codex-opero menu bar usage" width="620" />
+</p>
+
+<p align="center">
+  <img src="./Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="620" />
+</p>
 
 ## Highlights
 
