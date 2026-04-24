@@ -103,3 +103,49 @@ Requires macOS and an existing Codex, Claude, or Gemini login on the local machi
 - [v0.1.2](./Screenshot_v0.1.2.png)
 - [v0.1.3](./Screenshot_v0.1.3.png)
 - [v0.1.4](./Screenshot_v0.1.4.png)
+
+<details>
+  <summary>Release Notes</summary>
+
+  <h3>v0.1.5</h3>
+  <ul>
+    <li>Fix Gemini usage lookup after recent Gemini CLI updates</li>
+    <li>Improve Gemini OAuth source discovery for newer Gemini CLI bundle layouts</li>
+  </ul>
+
+  <h3>v0.1.4</h3>
+  <ul>
+    <li>Add a first-run onboarding popup with a notch guidance image</li>
+    <li>Add a <code>Don't show again</code> checkbox and compact <code>OK</code> button</li>
+    <li>Bundle the popup guidance image inside the packaged app</li>
+  </ul>
+
+  <h3>v0.1.3</h3>
+  <ul>
+    <li>Add configurable refresh interval presets</li>
+    <li>Add configurable auto-rotate interval presets</li>
+    <li>Keep the last successful snapshot visible during refresh to reduce fallback flicker</li>
+    <li>Use fixed English compact reset text such as <code>resets in 4h</code></li>
+  </ul>
+
+  <h3>v0.1.2</h3>
+  <ul>
+    <li>Add provider tray icons for Codex, Claude, and Gemini</li>
+    <li>Add Auto Rotate in the menu with 30-second rotation across available providers</li>
+    <li>Keep previous successful usage snapshots visible during refresh to reduce flicker</li>
+  </ul>
+
+  <h3>v0.1.1</h3>
+  <ul>
+    <li>Add Gemini provider support</li>
+    <li>Include the app icon in the packaged <code>.app</code> and DMG release</li>
+    <li>Keep Codex and Claude usage support</li>
+  </ul>
+
+  <h3>v0.1.0</h3>
+  <ul>
+    <li>Initial public release</li>
+    <li>Minimal macOS menu bar app for Codex and Claude usage</li>
+    <li>Basic DMG distribution and unsigned app installation guidance</li>
+  </ul>
+</details>

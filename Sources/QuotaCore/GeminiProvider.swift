@@ -187,27 +187,39 @@ private struct GeminiOAuthConfig {
     }
 
     private static func parse(from source: String) -> GeminiOAuthConfig? {
+        let clientIDPatterns = [
+            #"const OAUTH_CLIENT_ID = '([^']+)';"#,
+            #"var OAUTH_CLIENT_ID = "([^"]+)";"#,
+        ]
+        let clientSecretPatterns = [
+            #"const OAUTH_CLIENT_SECRET = '([^']+)';"#,
+            #"var OAUTH_CLIENT_SECRET = "([^"]+)";"#,
+        ]
+
         guard
-            let clientID = firstMatch(in: source, pattern: #"const OAUTH_CLIENT_ID = '([^']+)';"#),
-            let clientSecret = firstMatch(in: source, pattern: #"const OAUTH_CLIENT_SECRET = '([^']+)';"#)
+            let clientID = firstMatch(in: source, patterns: clientIDPatterns),
+            let clientSecret = firstMatch(in: source, patterns: clientSecretPatterns)
         else {
             return nil
         }
         return GeminiOAuthConfig(clientID: clientID, clientSecret: clientSecret)
     }
 
-    private static func firstMatch(in source: String, pattern: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return nil
+    private static func firstMatch(in source: String, patterns: [String]) -> String? {
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else {
+                continue
+            }
+            let range = NSRange(source.startIndex..<source.endIndex, in: source)
+            guard
+                let match = regex.firstMatch(in: source, options: [], range: range),
+                let valueRange = Range(match.range(at: 1), in: source)
+            else {
+                continue
+            }
+            return String(source[valueRange])
         }
-        let range = NSRange(source.startIndex..<source.endIndex, in: source)
-        guard
-            let match = regex.firstMatch(in: source, options: [], range: range),
-            let valueRange = Range(match.range(at: 1), in: source)
-        else {
-            return nil
-        }
-        return String(source[valueRange])
+        return nil
     }
 
     private static func candidateSourceURLs() -> [URL] {
@@ -222,6 +234,7 @@ private struct GeminiOAuthConfig {
                     .appendingPathComponent("gemini-cli-core")
                     .appendingPathComponent("dist/src/code_assist/oauth2.js")
             )
+            urls.append(contentsOf: bundleJavaScriptURLs(in: root.appendingPathComponent("bundle")))
         }
 
         urls.append(
@@ -230,8 +243,23 @@ private struct GeminiOAuthConfig {
         urls.append(
             URL(fileURLWithPath: "/usr/local/lib/node_modules/@google/gemini-cli/node_modules/@google/gemini-cli-core/dist/src/code_assist/oauth2.js")
         )
+        urls.append(contentsOf: bundleJavaScriptURLs(in: URL(fileURLWithPath: "/opt/homebrew/lib/node_modules/@google/gemini-cli/bundle")))
+        urls.append(contentsOf: bundleJavaScriptURLs(in: URL(fileURLWithPath: "/usr/local/lib/node_modules/@google/gemini-cli/bundle")))
 
         return urls
+    }
+
+    private static func bundleJavaScriptURLs(in directory: URL) -> [URL] {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+        return files
+            .filter { $0.pathExtension == "js" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
     private static func geminiExecutableURL() -> URL? {
