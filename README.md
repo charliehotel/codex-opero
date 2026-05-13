@@ -5,13 +5,16 @@
 `codex-opero` is a minimal macOS menu bar app that shows AI usage as a compact string like `57%/90%`.  
 Instead of a full dashboard, it focuses on one thing: letting you check the numbers you need at a glance.
 
-<p align="center">
-  <img src="./Screenshot_v0.1.3.png" alt="codex-opero menu bar usage" width="620" />
-</p>
-
-<p align="center">
-  <img src="./Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="620" />
-</p>
+<table>
+  <tr>
+    <td><img src="./Screenshot_v0.1.6_main.gif" alt="codex-opero auto rotate" width="420" /></td>
+    <td><img src="./Screenshot_v0.1.6_main.png" alt="codex-opero menu" width="420" /></td>
+  </tr>
+  <tr>
+    <td><img src="./Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="420" /></td>
+    <td><img src="./Screenshot_v0.1.6_noti.png" alt="codex-opero reset notifications" width="420" /></td>
+  </tr>
+</table>
 
 ## Highlights
 
@@ -22,6 +25,8 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 - Lets you choose the refresh interval from preset options in the menu
 - Lets you choose the auto-rotate interval from preset options in the menu
 - Refreshes automatically at the configured interval and also supports `Refresh Now`
+- Sends reset notifications when important usage buckets return to 100%
+- Checks for new GitHub releases about once a week
 - Supports `Launch at Login` when running as a packaged `.app`
 - Falls back to `--/--` when usage lookup fails
 
@@ -36,11 +41,25 @@ Instead, it reuses existing local authentication state and only fetches usage.
 
 That means Codex, Claude, or Gemini must already be logged in on the local machine.
 
-For `Gemini`, the two displayed values currently map to representative `Pro / Flash` quota buckets rather than the same `5-hour / weekly` windows used by Codex and Claude.
+For `Gemini`, the two menu bar values currently map to representative `Pro / Flash` quota buckets rather than the same `5-hour / weekly` windows used by Codex and Claude.  
+When you open the menu, Gemini usage is shown in more detail by `Pro`, `Flash`, and `Flash Lite` model groups.
 
 If you use `Claude`, macOS may ask for your password when the app first tries to read the Keychain credential.  
 Because `codex-opero` refreshes on a recurring interval, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose `Always Allow` for `codex-opero` when macOS asks for access to the Claude credential.
+
+## Notifications
+
+`codex-opero` can send macOS notifications when usage becomes available again.
+
+- `Codex` and `Claude`: notifies when the `5h` or `7d` remaining usage returns to `100%`
+- `Gemini`: notifies when the representative `Pro` or `Flash` usage bucket returns to `100%`
+
+Each bucket is notified only once while it stays at `100%`.  
+It can notify again after usage drops below `100%` and later returns to `100%`.
+
+The app also checks GitHub Releases about once a week.  
+If a newer version is available, it asks whether you want to open the release page in your browser.
 
 ## Auto Rotate
 
@@ -105,6 +124,18 @@ Requires macOS and an existing Codex, Claude, or Gemini login on the local machi
 - [v0.1.4](./Screenshot_v0.1.4.png)
 
 ## Release Notes
+
+<details>
+  <summary>v0.1.6</summary>
+  <ul>
+    <li>Add reset notifications for Codex and Claude <code>5h</code> and <code>7d</code> usage windows</li>
+    <li>Add reset notifications for Gemini <code>Pro</code> and <code>Flash</code> quota buckets</li>
+    <li>Show individual Gemini model usage in the menu, grouped by <code>Pro</code>, <code>Flash</code>, and <code>Flash Lite</code></li>
+    <li>Add a weekly GitHub release update check with a browser-open prompt</li>
+    <li>Start usage refresh at app launch so reset notifications can fire without opening the menu</li>
+    <li>Remove the extra refresh-rate helper text from the menu</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.5</summary>

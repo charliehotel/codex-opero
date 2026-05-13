@@ -59,7 +59,8 @@ public struct GeminiProvider: UsageProvider {
                 usedPercent: usedPercent(from: secondaryBucket),
                 resetAt: secondaryBucket.resetAt
             ),
-            fetchedAt: Date()
+            fetchedAt: Date(),
+            detailGroups: detailGroups(from: quota.buckets)
         )
     }
 
@@ -166,6 +167,52 @@ public struct GeminiProvider: UsageProvider {
         }
         let used = (1 - remainingFraction) * 100
         return max(0, min(100, Int(used.rounded())))
+    }
+
+    private func detailGroups(from buckets: [GeminiQuotaBucket]) -> [QuotaDetailGroup] {
+        let families: [(name: String, matcher: (GeminiQuotaBucket) -> Bool)] = [
+            ("Pro", { $0.modelID?.contains("pro") == true }),
+            ("Flash", { bucket in
+                guard let modelID = bucket.modelID else { return false }
+                return modelID.contains("flash") && modelID.contains("flash-lite") == false
+            }),
+            ("Flash Lite", { $0.modelID?.contains("flash-lite") == true }),
+        ]
+
+        return families.compactMap { family in
+            let windows = buckets
+                .filter { family.matcher($0) && $0.remainingFraction != nil }
+                .sorted { ($0.modelID ?? "") < ($1.modelID ?? "") }
+                .map { bucket in
+                    QuotaWindow(
+                        id: bucket.stableID,
+                        name: displayName(forModelID: bucket.modelID),
+                        usedPercent: usedPercent(from: bucket),
+                        resetAt: bucket.resetAt
+                    )
+                }
+            guard windows.isEmpty == false else {
+                return nil
+            }
+            return QuotaDetailGroup(name: family.name, windows: windows)
+        }
+    }
+
+    private func displayName(forModelID modelID: String?) -> String {
+        guard let modelID else {
+            return "Unknown"
+        }
+        return modelID
+            .replacingOccurrences(of: "gemini-", with: "")
+            .replacingOccurrences(of: "-", with: " ")
+            .split(separator: " ")
+            .map { token in
+                if token.allSatisfy(\.isNumber) || token.contains(".") {
+                    return String(token)
+                }
+                return token.capitalized
+            }
+            .joined(separator: " ")
     }
 }
 
@@ -353,6 +400,12 @@ private struct GeminiQuotaBucket: Decodable {
         case resetAt = "resetTime"
         case tokenType
         case modelID = "modelId"
+    }
+
+    var stableID: String {
+        [modelID, tokenType]
+            .compactMap { $0 }
+            .joined(separator: ":")
     }
 }
 

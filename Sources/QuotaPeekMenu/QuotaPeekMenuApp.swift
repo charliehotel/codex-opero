@@ -5,8 +5,18 @@ import QuotaCore
 @main
 struct QuotaPeekMenuApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var store = QuotaStore()
+    @State private var store: QuotaStore
     @State private var loginItemManager = LoginItemManager()
+
+    @MainActor
+    init() {
+        let notifier = QuotaResetNotifier.shared
+        let quotaStore = QuotaStore(onQuotaReset: { event in
+            await notifier.notify(event)
+        })
+        quotaStore.start()
+        _store = State(initialValue: quotaStore)
+    }
 
     var body: some Scene {
         MenuBarExtra {
@@ -24,6 +34,11 @@ struct QuotaPeekMenuApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         OnboardingWindowController.shared.showIfNeeded()
+        UpdateChecker.shared.start()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        UpdateChecker.shared.stop()
     }
 }
 
@@ -59,12 +74,25 @@ private struct ContentView: View {
                 .buttonStyle(.plain)
 
                 if case .loaded(let quota) = snapshot.status {
-                    Text("\(quota.primary.name): \(quota.primary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.primary))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(quota.secondary.name): \(quota.secondary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.secondary))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if quota.detailGroups.isEmpty {
+                        Text("\(quota.primary.name): \(quota.primary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.primary))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("\(quota.secondary.name): \(quota.secondary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.secondary))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(quota.detailGroups, id: \.name) { group in
+                            Text(group.name)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            ForEach(group.windows, id: \.id) { window in
+                                Text("\(window.name): \(window.usedPercent)% used, \(QuotaFormatter.resetString(for: window))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 } else if case .failed(let message) = snapshot.status {
                     Text(message)
                         .font(.caption)
@@ -98,12 +126,6 @@ private struct ContentView: View {
                     .pickerStyle(.radioGroup)
                 }
             }
-
-            Divider()
-
-            Text("Refresh rate is global. Auto Rotate skips unavailable providers.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
             Divider()
 
@@ -144,7 +166,6 @@ private struct ContentView: View {
         .padding(14)
         .frame(width: 320)
         .task {
-            store.start()
             loginItemManager.refreshStatus()
         }
         .onAppear {

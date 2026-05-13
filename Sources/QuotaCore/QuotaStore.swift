@@ -38,6 +38,8 @@ public final class QuotaStore {
     private var refreshTask: Task<Void, Never>?
     private var rotateTask: Task<Void, Never>?
     private let defaults: UserDefaults
+    private let quotaResetDetector: QuotaResetDetector
+    private let onQuotaReset: (@MainActor (QuotaResetEvent) async -> Bool)?
     private var isMenuPresented = false
 
     static let selectedProviderDefaultsKey = "selectedProviderID"
@@ -50,10 +52,13 @@ public final class QuotaStore {
         selectedProviderID: ProviderID = .codex,
         refreshIntervalSeconds: Int = 60,
         autoRotateIntervalSeconds: Int = 30,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        onQuotaReset: (@MainActor (QuotaResetEvent) async -> Bool)? = nil
     ) {
         self.providers = providers
         self.defaults = defaults
+        self.quotaResetDetector = QuotaResetDetector(defaults: defaults)
+        self.onQuotaReset = onQuotaReset
         if let persisted = defaults.string(forKey: Self.selectedProviderDefaultsKey),
            let providerID = ProviderID(rawValue: persisted) {
             self.selectedProviderID = providerID
@@ -145,6 +150,13 @@ public final class QuotaStore {
             updated.sort { $0.providerID.rawValue < $1.providerID.rawValue }
             for snapshot in updated {
                 replaceSnapshot(snapshot)
+                if case .loaded(let quota) = snapshot.status {
+                    for event in quotaResetDetector.eventsIfNeeded(for: quota) {
+                        if await onQuotaReset?(event) == true {
+                            quotaResetDetector.markNotified(event)
+                        }
+                    }
+                }
             }
             lastRefresh = Date()
         }

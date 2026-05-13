@@ -20,11 +20,13 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
 }
 
 public struct QuotaWindow: Codable, Equatable, Sendable {
+    public let id: String
     public let name: String
     public let usedPercent: Int
     public let resetAt: Date?
 
-    public init(name: String, usedPercent: Int, resetAt: Date?) {
+    public init(id: String? = nil, name: String, usedPercent: Int, resetAt: Date?) {
+        self.id = id ?? name
         self.name = name
         self.usedPercent = usedPercent
         self.resetAt = resetAt
@@ -35,17 +37,35 @@ public struct QuotaWindow: Codable, Equatable, Sendable {
     }
 }
 
+public struct QuotaDetailGroup: Equatable, Sendable {
+    public let name: String
+    public let windows: [QuotaWindow]
+
+    public init(name: String, windows: [QuotaWindow]) {
+        self.name = name
+        self.windows = windows
+    }
+}
+
 public struct ProviderQuota: Equatable, Sendable {
     public let providerID: ProviderID
     public let primary: QuotaWindow
     public let secondary: QuotaWindow
     public let fetchedAt: Date
+    public let detailGroups: [QuotaDetailGroup]
 
-    public init(providerID: ProviderID, primary: QuotaWindow, secondary: QuotaWindow, fetchedAt: Date) {
+    public init(
+        providerID: ProviderID,
+        primary: QuotaWindow,
+        secondary: QuotaWindow,
+        fetchedAt: Date,
+        detailGroups: [QuotaDetailGroup] = []
+    ) {
         self.providerID = providerID
         self.primary = primary
         self.secondary = secondary
         self.fetchedAt = fetchedAt
+        self.detailGroups = detailGroups
     }
 }
 
