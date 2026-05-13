@@ -7,12 +7,12 @@
 
 <table width="100%">
   <tr>
-    <td width="50%" valign="top"><img src="./Screenshot_v0.1.6_main.gif" alt="codex-opero auto rotate" width="100%" /></td>
-    <td width="50%" valign="top"><img src="./Screenshot_v0.1.6_main.png" alt="codex-opero menu" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.6_main.gif" alt="codex-opero auto rotate" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.6_main.png" alt="codex-opero menu" width="100%" /></td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src="./Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="100%" /></td>
-    <td width="50%" valign="top"><img src="./Screenshot_v0.1.6_noti.png" alt="codex-opero reset notifications" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.6_noti.png" alt="codex-opero reset notifications" width="100%" /></td>
   </tr>
 </table>
 
@@ -114,14 +114,6 @@ swift run codex-opero
 ```
 
 macOS 환경과 로컬의 기존 Codex, Claude, 또는 Gemini 로그인 상태가 필요합니다.
-
-## 스크린샷 히스토리
-
-- [v0.1.0](./Screenshot_v0.1.0.png)
-- [v0.1.1](./Screenshot_v0.1.1.png)
-- [v0.1.2](./Screenshot_v0.1.2.png)
-- [v0.1.3](./Screenshot_v0.1.3.png)
-- [v0.1.4](./Screenshot_v0.1.4.png)
 
 ## 릴리즈 노트
 

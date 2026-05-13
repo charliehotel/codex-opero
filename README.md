@@ -7,12 +7,12 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 
 <table width="100%">
   <tr>
-    <td width="50%" valign="top"><img src="./Screenshot_v0.1.6_main.gif" alt="codex-opero auto rotate" width="100%" /></td>
-    <td width="50%" valign="top"><img src="./Screenshot_v0.1.6_main.png" alt="codex-opero menu" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.6_main.gif" alt="codex-opero auto rotate" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.6_main.png" alt="codex-opero menu" width="100%" /></td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src="./Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="100%" /></td>
-    <td width="50%" valign="top"><img src="./Screenshot_v0.1.6_noti.png" alt="codex-opero reset notifications" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.6_noti.png" alt="codex-opero reset notifications" width="100%" /></td>
   </tr>
 </table>
 
@@ -114,14 +114,6 @@ swift run codex-opero
 ```
 
 Requires macOS and an existing Codex, Claude, or Gemini login on the local machine.
-
-## Screenshot History
-
-- [v0.1.0](./Screenshot_v0.1.0.png)
-- [v0.1.1](./Screenshot_v0.1.1.png)
-- [v0.1.2](./Screenshot_v0.1.2.png)
-- [v0.1.3](./Screenshot_v0.1.3.png)
-- [v0.1.4](./Screenshot_v0.1.4.png)
 
 ## Release Notes
 
