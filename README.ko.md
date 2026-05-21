@@ -19,7 +19,7 @@
 ## 핵심 기능
 
 - 메뉴 막대에 선택된 provider의 남은 사용량을 두 칸 숫자 형식으로 간단히 표시합니다
-- `Codex`, `Claude`, `Gemini` 중 하나를 선택해서 메뉴 막대에 띄울 수 있습니다
+- `Codex`, `Claude`, `Gemini/Antigravity` 중 하나를 선택해서 메뉴 막대에 띄울 수 있습니다
 - 마지막으로 선택한 provider를 기억합니다
 - `Auto Rotate`를 켜면 사용 가능한 provider를 설정한 간격으로 자동 순환합니다
 - 메뉴에서 refresh 간격을 프리셋으로 선택할 수 있습니다
@@ -37,23 +37,24 @@
 
 - `Codex`: `~/.codex/auth.json` 사용
 - `Claude`: macOS Keychain의 `Claude Code-credentials` 또는 `~/.claude/.credentials.json` 사용
-- `Gemini`: `~/.gemini/oauth_creds.json`과 Gemini Code Assist quota endpoint 사용
+- `Gemini/Antigravity`: macOS Keychain의 `gemini-cli-oauth` 또는 `~/.gemini/oauth_creds.json` 사용
 
-즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex, Claude, 또는 Gemini에 로그인 되어 있어야 합니다.
+즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex, Claude, 또는 Gemini/Antigravity에 로그인 되어 있어야 합니다.
 
-`Gemini`의 경우 메뉴 막대의 두 칸 숫자는 Codex/Claude의 `5시간 / 주간` 구조와 동일하지 않고, 대표적인 `Pro / Flash` quota 구간을 기준으로 표시합니다.  
-메뉴를 열면 Gemini 사용량은 `Pro`, `Flash`, `Flash Lite` 모델 그룹별로 더 자세히 표시됩니다.
+`Gemini/Antigravity`의 경우 메뉴 막대의 두 칸 숫자는 Codex/Claude의 `5시간 / 주간` 구조와 동일하지 않고, 대표적인 `Pro / Flash` quota 구간을 기준으로 표시합니다.  
+메뉴를 열면 Gemini/Antigravity 사용량은 `Pro`, `Flash`, `Flash Lite` 모델 그룹별로 더 자세히 표시됩니다.
 
-`Claude`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.  
-`codex-opero`는 일정 간격으로 새로고침하므로 `허용`만 선택하면 이후에도 반복해서 프롬프트가 나타날 수 있습니다.  
-반복 입력을 피하려면 Claude credential 접근 요청이 뜰 때 `codex-opero`에 대해 `항상 허용`을 선택하시는 편이 좋습니다.
+`Claude` 또는 `Gemini/Antigravity`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.  
+이 팝업은 **사용자가 해당 AI 도구를 로그인하여 사용하고 있으며, 관련 키체인이 존재할 때만 1회** 나타납니다. (해당 AI 도구를 전혀 사용하지 않거나 로그인한 적이 없는 경우 팝업은 전혀 발생하지 않고 자동으로 스킵됩니다.)  
+
+`codex-opero`는 일정 간격으로 새로고침하므로, 팝업창이 뜰 때 `허용` 대신 **`항상 허용(Always Allow)`**을 선택하셔야 이후 비밀번호 요구 없이 백그라운드에서 매끄럽게 조회됩니다.
 
 ## 알림
 
 `codex-opero`는 사용량이 다시 회복되었을 때 macOS 알림으로 알려줄 수 있습니다.
 
 - `Codex`, `Claude`: `5h` 또는 `7d` 남은 사용량이 `100%`로 돌아오면 알림을 보냅니다
-- `Gemini`: 대표 `Pro` 또는 `Flash` quota 구간이 `100%`로 돌아오면 알림을 보냅니다
+- `Gemini/Antigravity`: 대표 `Pro` 또는 `Flash` quota 구간이 `100%`로 돌아오면 알림을 보냅니다
 
 각 구간은 `100%` 상태가 유지되는 동안 한 번만 알림을 보냅니다.  
 사용량이 `100%` 아래로 내려갔다가 다시 `100%`로 돌아오면 다시 알림을 보낼 수 있습니다.
@@ -68,7 +69,7 @@
 
 - `Codex`
 - `Claude`
-- `Gemini`
+- `Gemini/Antigravity`
 
 refresh 간격은 `1분`, `3분`, `5분`, `15분` 같은 프리셋 중에서 고를 수 있습니다.  
 auto rotate 간격도 `10초`, `30초`, `60초` 같은 프리셋 중에서 고를 수 있습니다.
@@ -113,9 +114,18 @@ cd codex-opero
 swift run codex-opero
 ```
 
-macOS 환경과 로컬의 기존 Codex, Claude, 또는 Gemini 로그인 상태가 필요합니다.
+macOS 환경과 로컬의 기존 Codex, Claude, 또는 Gemini/Antigravity 로그인 상태가 필요합니다.
 
 ## 릴리즈 노트
+
+<details>
+  <summary>v0.1.7</summary>
+  <ul>
+    <li>Antigravity CLI 및 최신 Gemini CLI와의 연동 호환성 개선</li>
+    <li>로컬 파일(<code>oauth_creds.json</code>)이 없는 경우 macOS 키체인(<code>gemini-cli-oauth</code>)에서 자동으로 토큰 정보를 검색하여 가져오는 기능 추가</li>
+    <li>Gemini CLI 삭제 시의 OAuth 클라이언트 정보 폴백 처리 추가</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.6</summary>
