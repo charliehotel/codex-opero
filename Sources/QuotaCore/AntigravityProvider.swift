@@ -88,9 +88,8 @@ public struct AntigravityProvider: UsageProvider {
     // MARK: - Model filtering
 
     private func visibleModels(from cache: AgyQuotaCache) -> [AgyModel] {
-        // Flatten payload.models dict (keyed by model slug)
         guard let payload = cache.payload else { return [] }
-        return payload.models
+        let allModels = payload.models
             .map { id, model in AgyModel(id: id, raw: model) }
             .filter { model in
                 // Exclude internal tab/chat models
@@ -102,6 +101,16 @@ public struct AntigravityProvider: UsageProvider {
                 return true
             }
             .sorted { $0.displayName < $1.displayName }
+
+        var uniqueModels: [AgyModel] = []
+        var seenNames: Set<String> = []
+        for model in allModels {
+            if !seenNames.contains(model.displayName) {
+                seenNames.insert(model.displayName)
+                uniqueModels.append(model)
+            }
+        }
+        return uniqueModels
     }
 
     // MARK: - Bucket selection
