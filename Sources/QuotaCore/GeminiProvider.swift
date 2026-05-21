@@ -192,21 +192,26 @@ public struct GeminiProvider: UsageProvider {
     }
 
     private func detailGroups(from buckets: [GeminiQuotaBucket]) -> [QuotaDetailGroup] {
-        let families: [(name: String, matcher: (GeminiQuotaBucket) -> Bool)] = [
-            ("Pro", { $0.modelID?.contains("pro") == true }),
-            ("Flash", { bucket in
-                guard let modelID = bucket.modelID else { return false }
-                return modelID.contains("flash") && modelID.contains("flash-lite") == false
-            }),
-            ("Flash Lite", { $0.modelID?.contains("flash-lite") == true }),
+        let families: [(name: String, modelIDs: [String], modelNames: [String])] = [
+            (
+                "Pro",
+                ["gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-2.5-pro"],
+                ["Gemini 3.1 Pro Preview", "Gemini 2.5 Pro"]
+            ),
+            (
+                "Flash",
+                ["gemini-3-flash-preview", "gemini-2.5-flash"],
+                ["Gemini 3 Flash Preview", "Gemini 2.5 Flash"]
+            ),
+            (
+                "Flash Lite",
+                ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash-lite"],
+                ["Gemini 3.1 Flash Lite Preview", "Gemini 2.5 Flash Lite"]
+            ),
         ]
 
         return families.compactMap { family in
-            // Pick any representative bucket from the group — all share the same quota value
-            let representative = buckets
-                .filter { family.matcher($0) && $0.remainingFraction != nil }
-                .sorted { ($0.modelID ?? "") < ($1.modelID ?? "") }
-                .first
+            let representative = representativeBucket(from: buckets, modelIDs: family.modelIDs)
             guard let representative else { return nil }
             let window = QuotaWindow(
                 id: "group:\(family.name)",
@@ -214,25 +219,17 @@ public struct GeminiProvider: UsageProvider {
                 usedPercent: usedPercent(from: representative),
                 resetAt: representative.resetAt
             )
-            return QuotaDetailGroup(name: family.name, windows: [window])
+            return QuotaDetailGroup(name: family.name, windows: [window], modelNames: family.modelNames)
         }
     }
 
-    private func displayName(forModelID modelID: String?) -> String {
-        guard let modelID else {
-            return "Unknown"
-        }
-        return modelID
-            .replacingOccurrences(of: "gemini-", with: "")
-            .replacingOccurrences(of: "-", with: " ")
-            .split(separator: " ")
-            .map { token in
-                if token.allSatisfy(\.isNumber) || token.contains(".") {
-                    return String(token)
-                }
-                return token.capitalized
+    private func representativeBucket(from buckets: [GeminiQuotaBucket], modelIDs: [String]) -> GeminiQuotaBucket? {
+        for modelID in modelIDs {
+            if let bucket = buckets.first(where: { $0.modelID == modelID && $0.remainingFraction != nil }) {
+                return bucket
             }
-            .joined(separator: " ")
+        }
+        return nil
     }
 }
 

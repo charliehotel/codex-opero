@@ -43,10 +43,12 @@ public struct QuotaWindow: Codable, Equatable, Sendable {
 public struct QuotaDetailGroup: Equatable, Sendable {
     public let name: String
     public let windows: [QuotaWindow]
+    public let modelNames: [String]
 
-    public init(name: String, windows: [QuotaWindow]) {
+    public init(name: String, windows: [QuotaWindow], modelNames: [String] = []) {
         self.name = name
         self.windows = windows
+        self.modelNames = modelNames
     }
 }
 

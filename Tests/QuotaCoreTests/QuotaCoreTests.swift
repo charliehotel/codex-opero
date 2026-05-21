@@ -113,6 +113,218 @@ func geminiProviderIDHasDisplayName() {
     #expect(ProviderID.gemini.displayName == "Gemini")
 }
 
+@Test
+func antigravityProviderUsesSharedModelBuckets() async throws {
+    let cacheDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravity.\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: cacheDirectory) }
+
+    let cache = """
+    {
+      "updatedAt": 1779200553561,
+      "payload": {
+        "models": {
+          "gemini-3.1-pro-high": {
+            "displayName": "Gemini 3.1 Pro (High)",
+            "recommended": true,
+            "quotaInfo": {
+              "remainingFraction": 0.75,
+              "resetTime": "2026-05-26T00:22:19Z"
+            }
+          },
+          "gemini-3-flash": {
+            "displayName": "Gemini 3 Flash",
+            "recommended": true,
+            "quotaInfo": {
+              "remainingFraction": 0.80,
+              "resetTime": "2026-05-26T14:22:33Z"
+            }
+          },
+          "claude-opus-4-6-thinking": {
+            "displayName": "Claude Opus 4.6 (Thinking)",
+            "recommended": true,
+            "quotaInfo": {
+              "remainingFraction": 0.50,
+              "resetTime": "2026-05-26T00:15:30Z"
+            }
+          },
+          "gpt-oss-120b-medium": {
+            "displayName": "GPT-OSS 120B (Medium)",
+            "recommended": true,
+            "quotaInfo": {
+              "remainingFraction": 0.55,
+              "resetTime": "2026-05-26T00:15:30Z"
+            }
+          }
+        }
+      }
+    }
+    """
+    try cache.data(using: .utf8)?.write(to: cacheDirectory.appendingPathComponent("quota.json"))
+
+    let quota = try await AntigravityProvider(
+        cacheDirectoryURLs: [cacheDirectory],
+        historyDirectoryURLs: [],
+        currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
+        usageExecutableURL: nil
+    ).fetchQuota()
+
+    #expect(quota.primary.name == "Google")
+    #expect(quota.primary.remainingPercent == 75)
+    #expect(quota.secondary.name == "3rd Party")
+    #expect(quota.secondary.remainingPercent == 50)
+    #expect(quota.detailGroups.map(\.name) == ["Google", "3rd Party"])
+    #expect(quota.detailGroups[0].windows.first?.name == "Google")
+    #expect(quota.detailGroups[0].windows.first?.usedPercent == 25)
+    #expect(quota.detailGroups[0].modelNames == [
+        "Gemini 3.1 Pro (High)",
+        "Gemini 3.1 Pro (Low)",
+        "Gemini 3.5 Flash (High)",
+        "Gemini 3.5 Flash (Medium)",
+    ])
+    #expect(quota.detailGroups[1].windows.first?.name == "3rd Party")
+    #expect(quota.detailGroups[1].windows.first?.usedPercent == 50)
+    #expect(quota.detailGroups[1].modelNames == [
+        "Claude Opus 4.6 (Thinking)",
+        "Claude Sonnet 4.6 (Thinking)",
+        "GPT-OSS 120B (Medium)",
+    ])
+}
+
+@Test
+func antigravityProviderUsesCurrentAccountAndHistoryBuckets() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityCurrent.\(UUID().uuidString)")
+    let cacheDirectory = root.appendingPathComponent("quota")
+    let historyDirectory = root.appendingPathComponent("history")
+    let currentAccountURL = root.appendingPathComponent("current_account.json")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: historyDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let fullCache = """
+    {
+      "email": "other@example.com",
+      "payload": {
+        "models": {
+          "gemini-3.1-pro-high": {"quotaInfo": {"remainingFraction": 1, "resetTime": "2026-05-26T00:22:19Z"}},
+          "claude-opus-4-6-thinking": {"quotaInfo": {"remainingFraction": 1, "resetTime": "2026-05-26T00:15:30Z"}}
+        }
+      }
+    }
+    """
+    let currentCache = """
+    {
+      "email": "current@example.com",
+      "payload": {
+        "models": {
+          "gemini-3.1-pro-high": {"quotaInfo": {"remainingFraction": 0.9, "resetTime": "2026-05-26T00:22:19Z"}},
+          "claude-opus-4-6-thinking": {"quotaInfo": {"remainingFraction": 0.9, "resetTime": "2026-05-26T00:15:30Z"}}
+        }
+      }
+    }
+    """
+    let history = """
+    {
+      "email": "current@example.com",
+      "models": {
+        "g3-pro": {
+          "points": [{"timestamp": 1000, "remainingPercentage": 80, "resetTime": 1779754939000}]
+        },
+        "g3-flash": {
+          "points": [{"timestamp": 1000, "remainingPercentage": 90, "resetTime": 1779805353000}]
+        },
+        "claude-4-5": {
+          "points": [{"timestamp": 1000, "remainingPercentage": 0, "resetTime": 1779754530000}]
+        }
+      }
+    }
+    """
+    try fullCache.data(using: .utf8)?.write(to: cacheDirectory.appendingPathComponent("other.json"))
+    try currentCache.data(using: .utf8)?.write(to: cacheDirectory.appendingPathComponent("current.json"))
+    try history.data(using: .utf8)?.write(to: historyDirectory.appendingPathComponent("current.json"))
+    try #"{"email":"current@example.com"}"#.data(using: .utf8)?.write(to: currentAccountURL)
+
+    let quota = try await AntigravityProvider(
+        cacheDirectoryURLs: [cacheDirectory],
+        historyDirectoryURLs: [historyDirectory],
+        currentAccountURL: currentAccountURL,
+        usageExecutableURL: nil
+    ).fetchQuota()
+
+    #expect(quota.primary.usedPercent == 20)
+    #expect(quota.secondary.usedPercent == 100)
+    #expect(quota.detailGroups[0].windows.first?.usedPercent == 20)
+    #expect(quota.detailGroups[1].windows.first?.usedPercent == 100)
+}
+
+@Test
+func antigravityProviderPrefersLiveUsageOutput() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityLive.\(UUID().uuidString)")
+    let cacheDirectory = root.appendingPathComponent("quota")
+    let executableURL = root.appendingPathComponent("agy-fixture")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let staleCache = """
+    {
+      "payload": {
+        "models": {
+          "gemini-3.1-pro-high": {"quotaInfo": {"remainingFraction": 1, "resetTime": "2026-05-26T00:22:19Z"}},
+          "claude-opus-4-6-thinking": {"quotaInfo": {"remainingFraction": 0.4, "resetTime": "2026-05-26T00:15:30Z"}}
+        }
+      }
+    }
+    """
+    try staleCache.data(using: .utf8)?.write(to: cacheDirectory.appendingPathComponent("quota.json"))
+
+    let script = """
+    #!/bin/sh
+    printf 'agy ready> '
+    read command
+    if [ "$command" != "/usage" ]; then
+      exit 2
+    fi
+    cat <<'EOF'
+    \u{001B}[2J\rModel Quota
+    \u{001B}[35mGemini 3.5 Flash (High)\u{001B}[0m
+    80% remaining · Refreshes in 3h 0m
+    \u{001B}[35mGemini 3.5 Flash (Medium)\u{001B}[0m
+    80% remaining · Refreshes in 3h 0m
+    \u{001B}[35mGemini 3.1 Pro (High)\u{001B}[0m
+    80% remaining · Refreshes in 3h 1m
+    \u{001B}[35mGemini 3.1 Pro (Low)\u{001B}[0m
+    80% remaining · Refreshes in 3h 1m
+    \u{001B}[35mClaude Sonnet 4.6 (Thinking)\u{001B}[0m
+    Quota available
+    \u{001B}[35mClaude Opus 4.6 (Thinking)\u{001B}[0m
+    Quota available
+    \u{001B}[35mGPT-OSS 120B (Medium)\u{001B}[0m
+    Quota available
+    EOF
+    sleep 5
+    """
+    try script.data(using: .utf8)?.write(to: executableURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+    let quota = try await AntigravityProvider(
+        cacheDirectoryURLs: [cacheDirectory],
+        historyDirectoryURLs: [],
+        currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
+        usageExecutableURL: executableURL,
+        usageTimeout: 2
+    ).fetchQuota()
+
+    #expect(quota.primary.remainingPercent == 80)
+    #expect(quota.primary.usedPercent == 20)
+    #expect(quota.secondary.remainingPercent == 100)
+    #expect(quota.secondary.usedPercent == 0)
+    #expect(quota.detailGroups[0].windows.first?.usedPercent == 20)
+    #expect(quota.detailGroups[1].windows.first?.usedPercent == 0)
+}
+
 @MainActor
 @Test
 func selectedProviderSkipsUnavailableProvidersWhenRotating() async {
@@ -514,6 +726,24 @@ func autoRotateSettingPersistsAcrossStoreInstances() {
 
     let secondStore = QuotaStore(defaults: defaults)
     #expect(secondStore.autoRotateEnabled)
+}
+
+@MainActor
+@Test
+func expandedProvidersPersistAcrossStoreInstances() {
+    let defaults = UserDefaults(suiteName: "QuotaCoreTests.expandedProviders")!
+    defaults.removePersistentDomain(forName: "QuotaCoreTests.expandedProviders")
+
+    let firstStore = QuotaStore(defaults: defaults)
+    #expect(firstStore.isExpanded(.gemini))
+    firstStore.toggleExpanded(.gemini)
+    firstStore.toggleExpanded(.antigravity)
+
+    let secondStore = QuotaStore(defaults: defaults)
+    #expect(secondStore.isExpanded(.gemini) == false)
+    #expect(secondStore.isExpanded(.antigravity) == false)
+    #expect(secondStore.isExpanded(.codex))
+    #expect(secondStore.isExpanded(.claude))
 }
 
 @MainActor

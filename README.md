@@ -19,7 +19,7 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 ## Highlights
 
 - Shows the selected provider's remaining usage in a compact two-value format from the menu bar
-- Lets you choose between `Codex`, `Claude`, and `Gemini/Antigravity`
+- Lets you choose between `Codex`, `Claude`, `Gemini`, and `Antigravity`
 - Remembers the last selected provider
 - Supports `Auto Rotate` to cycle through available providers at a configurable interval
 - Lets you choose the refresh interval from preset options in the menu
@@ -37,16 +37,23 @@ Instead, it reuses existing local authentication state and only fetches usage.
 
 - `Codex`: uses `~/.codex/auth.json`
 - `Claude`: uses the macOS Keychain item `Claude Code-credentials` or `~/.claude/.credentials.json`
-- `Gemini/Antigravity`: uses the macOS Keychain item `gemini-cli-oauth` or `~/.gemini/oauth_creds.json`
-- `Antigravity` (agy): uses `~/.antigravity_cockpit/cache/quota_api_v1/authorized/` cache files (no Keychain prompt required)
+- `Gemini`: uses the macOS Keychain item `gemini-cli-oauth` or `~/.gemini/oauth_creds.json`
+- `Antigravity` (agy): runs the local `agy` CLI, opens `/usage`, and parses the live quota output; it requires an existing Antigravity login/keyring state
 
-That means Codex, Claude, or Gemini/Antigravity must already be logged in on the local machine.
+That means Codex, Claude, Gemini, or Antigravity must already be logged in on the local machine.
 
-For `Gemini/Antigravity`, the two menu bar values currently map to representative `Pro / Flash` quota buckets rather than the same `5-hour / weekly` windows used by Codex and Claude.  
-When you open the menu, Gemini/Antigravity usage is shown in more detail by `Pro`, `Flash`, and `Flash Lite` model groups.
+For `Gemini`, the two menu bar values currently map to representative `Pro / Flash` quota buckets rather than the same `5-hour / weekly` windows used by Codex and Claude.  
+When you open the menu, Gemini usage is shown in more detail by `Pro`, `Flash`, and `Flash Lite` model groups.
 
-If you use `Claude` or `Gemini/Antigravity`, macOS may ask for your password when the app first tries to read the Keychain credentials.  
-Note that this prompt **only appears if you actually use that AI tool and its keychain item exists**. If you do not use Claude or Gemini/Antigravity, no popups for those credentials will appear at all.
+For `Antigravity`, the two menu bar values map to shared quota buckets:
+
+- `Google`: Gemini 3.1 Pro and Gemini 3.5 Flash variants
+- `3rd Party`: Claude Opus/Sonnet and GPT-OSS variants
+
+`codex-opero` prefers live `agy /usage` output for Antigravity because Antigravity's local JSON quota cache can lag behind what the CLI actually shows.
+
+If you use `Claude` or `Gemini`, macOS may ask for your password when the app first tries to read the Keychain credentials.  
+Note that this prompt **only appears if you actually use that AI tool and its keychain item exists**. If you do not use Claude or Gemini, no popups for those credentials will appear at all.
 
 Because `codex-opero` refreshes on a recurring interval, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose **`Always Allow`** for `codex-opero` when macOS asks for access to the keychain credential.
@@ -56,7 +63,7 @@ To avoid that, choose **`Always Allow`** for `codex-opero` when macOS asks for a
 `codex-opero` can send macOS notifications when usage becomes available again.
 
 - `Codex` and `Claude`: notifies when the `5h` or `7d` remaining usage returns to `100%`
-- `Gemini/Antigravity`: notifies when the representative `Pro` or `Flash` usage bucket returns to `100%`
+- `Gemini`: notifies when the representative `Pro` or `Flash` usage bucket returns to `100%`
 
 Each bucket is notified only once while it stays at `100%`.  
 It can notify again after usage drops below `100%` and later returns to `100%`.
@@ -71,7 +78,8 @@ When enabled, `codex-opero` rotates through available providers in this order:
 
 - `Codex`
 - `Claude`
-- `Gemini/Antigravity`
+- `Gemini`
+- `Antigravity`
 
 You can choose the refresh interval from preset options such as `1 min`, `3 min`, `5 min`, and `15 min`.  
 You can also choose the auto-rotate interval from preset options such as `10 sec`, `30 sec`, and `60 sec`.
@@ -116,9 +124,23 @@ cd codex-opero
 swift run codex-opero
 ```
 
-Requires macOS and an existing Codex, Claude, or Gemini/Antigravity login on the local machine.
+Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on the local machine.
 
 ## Release Notes
+
+<details>
+  <summary>v0.1.9</summary>
+  <ul>
+    <li>Rework Antigravity usage lookup to prefer live <code>agy /usage</code> output instead of stale quota cache files.</li>
+    <li>Show Antigravity as two shared quota buckets: <code>Google</code> and <code>3rd Party</code>.</li>
+    <li>List the selectable Antigravity models under each bucket, including Gemini 3.1 Pro, Gemini 3.5 Flash, Claude Opus/Sonnet 4.6, and GPT-OSS 120B.</li>
+    <li>Make Antigravity lookup failures visible instead of silently falling back to old 100% cache values.</li>
+    <li>Add collapsible provider sections and persist expanded/collapsed state across app restarts.</li>
+    <li>Use consistent bucket detail formatting for Codex, Claude, Gemini, and Antigravity.</li>
+    <li>Update Gemini detail groups to the current Pro, Flash, and Flash Lite model families.</li>
+    <li>Improve tests for Antigravity live usage parsing, current-account cache selection, and persisted collapse state.</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.8</summary>

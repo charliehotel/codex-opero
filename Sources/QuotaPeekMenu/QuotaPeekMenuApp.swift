@@ -89,21 +89,32 @@ private struct ContentView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         if case .loaded(let quota) = snapshot.status {
                             if quota.detailGroups.isEmpty {
-                                Text("\(quota.primary.name): \(quota.primary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.primary))")
-                                    .font(.caption)
+                                Text("[\(quota.primary.name)]  \(quota.primary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.primary))")
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
-                                Text("\(quota.secondary.name): \(quota.secondary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.secondary))")
-                                    .font(.caption)
+                                Text("[\(quota.secondary.name)]  \(quota.secondary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.secondary))")
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
                             } else {
                                 ForEach(quota.detailGroups, id: \.name) { group in
-                                    Text(group.name)
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                    ForEach(group.windows, id: \.id) { window in
-                                        Text("\(window.name): \(window.usedPercent)% used, \(QuotaFormatter.resetString(for: window))")
-                                            .font(.caption)
+                                    if group.modelNames.isEmpty {
+                                        Text(group.name)
+                                            .font(.caption.weight(.semibold))
                                             .foregroundStyle(.secondary)
+                                        ForEach(group.windows, id: \.id) { window in
+                                            Text("\(window.name): \(window.usedPercent)% used, \(QuotaFormatter.resetString(for: window))")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    } else if let window = group.windows.first {
+                                        Text("[\(group.name)]  \(window.usedPercent)% used, \(QuotaFormatter.resetString(for: window))")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                        ForEach(group.modelNames, id: \.self) { modelName in
+                                            Text("  - \(modelName)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
                                     }
                                 }
                             }
