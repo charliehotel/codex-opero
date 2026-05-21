@@ -3,13 +3,19 @@ import Foundation
 public struct AntigravityProvider: UsageProvider {
     public let providerID: ProviderID = .antigravity
 
-    private let cacheDirectoryURL: URL
+    private let cacheDirectoryURLs: [URL]
 
     public init(
-        cacheDirectoryURL: URL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".antigravity_cockpit/cache/quota_api_v1/authorized")
+        cacheDirectoryURLs: [URL] = [
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".antigravity_cockpit/cache/quota_api_v1_plugin/authorized"),
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".antigravity_cockpit/cache/quota_api_v1_desktop/authorized"),
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".antigravity_cockpit/cache/quota_api_v1/authorized")
+        ]
     ) {
-        self.cacheDirectoryURL = cacheDirectoryURL
+        self.cacheDirectoryURLs = cacheDirectoryURLs
     }
 
     public func fetchQuota() async throws -> ProviderQuota {
@@ -49,22 +55,24 @@ public struct AntigravityProvider: UsageProvider {
     // MARK: - Cache loading
 
     private func loadLatestCache() throws -> AgyQuotaCache {
-        guard FileManager.default.fileExists(atPath: cacheDirectoryURL.path) else {
+        var allFiles: [URL] = []
+        for dir in cacheDirectoryURLs {
+            guard FileManager.default.fileExists(atPath: dir.path) else { continue }
+            if let files = try? FileManager.default.contentsOfDirectory(
+                at: dir,
+                includingPropertiesForKeys: [.contentModificationDateKey],
+                options: .skipsHiddenFiles
+            ) {
+                allFiles.append(contentsOf: files.filter { $0.pathExtension == "json" })
+            }
+        }
+
+        guard !allFiles.isEmpty else {
             throw ProviderError.credentialsMissing
         }
 
-        let files = try FileManager.default.contentsOfDirectory(
-            at: cacheDirectoryURL,
-            includingPropertiesForKeys: [.contentModificationDateKey],
-            options: .skipsHiddenFiles
-        ).filter { $0.pathExtension == "json" }
-
-        guard !files.isEmpty else {
-            throw ProviderError.credentialsMissing
-        }
-
-        // Pick the most recently modified file
-        let latest = files.max(by: { a, b in
+        // Pick the most recently modified file across all directories
+        let latest = allFiles.max(by: { a, b in
             let aDate = (try? a.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             let bDate = (try? b.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             return aDate < bDate
@@ -101,6 +109,9 @@ public struct AntigravityProvider: UsageProvider {
     /// Primary: highest-tier recommended model (pro/high tier preferred)
     private func pickPrimary(from models: [AgyModel]) -> AgyModel? {
         let preferredIDs = [
+            "claude-opus-4-6-thinking",
+            "claude-sonnet-4-6",
+            "gemini-3.1-pro-high",
             "gemini-3-pro-high",
             "gemini-3-pro-low",
             "gemini-2.5-pro",
