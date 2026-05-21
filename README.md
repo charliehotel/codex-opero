@@ -7,8 +7,8 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 
 <table width="100%">
   <tr>
-    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.6_main.gif" alt="codex-opero auto rotate" width="100%" /></td>
-    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.6_main.png" alt="codex-opero menu" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.9_toggle.gif" alt="codex-opero collapsible provider sections" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.9_main.png" alt="codex-opero menu" width="100%" /></td>
   </tr>
   <tr>
     <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="100%" /></td>
@@ -57,6 +57,12 @@ Note that this prompt **only appears if you actually use that AI tool and its ke
 
 Because `codex-opero` refreshes on a recurring interval, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose **`Always Allow`** for `codex-opero` when macOS asks for access to the keychain credential.
+
+<p>
+  <img src="./Screenshots/Screenshot_v0.1.9_keychain.png" alt="macOS Keychain prompt for codex-opero" width="520" />
+</p>
+
+When this dialog appears, select **`Always Allow`** so `codex-opero` can refresh usage in the background without asking for your password again.
 
 ## Notifications
 
