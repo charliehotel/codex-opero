@@ -38,6 +38,7 @@ Instead, it reuses existing local authentication state and only fetches usage.
 - `Codex`: uses `~/.codex/auth.json`
 - `Claude`: uses the macOS Keychain item `Claude Code-credentials` or `~/.claude/.credentials.json`
 - `Gemini/Antigravity`: uses the macOS Keychain item `gemini-cli-oauth` or `~/.gemini/oauth_creds.json`
+- `Antigravity` (agy): uses `~/.antigravity_cockpit/cache/quota_api_v1/authorized/` cache files (no Keychain prompt required)
 
 That means Codex, Claude, or Gemini/Antigravity must already be logged in on the local machine.
 
@@ -118,6 +119,16 @@ swift run codex-opero
 Requires macOS and an existing Codex, Claude, or Gemini/Antigravity login on the local machine.
 
 ## Release Notes
+
+<details>
+  <summary>v0.1.8</summary>
+  <ul>
+    <li>Add Antigravity (agy) CLI usage as an independent tab</li>
+    <li>Read <code>~/.antigravity_cockpit/cache/quota_api_v1/authorized/</code> cache files directly — no Keychain prompt required</li>
+    <li>Group models by provider (Google / Anthropic / OpenAI) in the detail menu</li>
+    <li>Now supports 4 tabs: <code>Codex</code> / <code>Claude</code> / <code>Gemini</code> / <code>Antigravity</code></li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.7</summary>

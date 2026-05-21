@@ -33,6 +33,12 @@ public final class QuotaStore {
             restartRotateTaskIfNeeded()
         }
     }
+    public var expandedProviderIDs: Set<ProviderID> {
+        didSet {
+            let array = Array(expandedProviderIDs).map { $0.rawValue }
+            defaults.set(array, forKey: Self.expandedProvidersDefaultsKey)
+        }
+    }
 
     private let providers: [any UsageProvider]
     private var refreshTask: Task<Void, Never>?
@@ -46,9 +52,10 @@ public final class QuotaStore {
     static let autoRotateEnabledDefaultsKey = "autoRotateEnabled"
     static let refreshIntervalDefaultsKey = "refreshIntervalSeconds"
     static let autoRotateIntervalDefaultsKey = "autoRotateIntervalSeconds"
+    static let expandedProvidersDefaultsKey = "expandedProviderIDs"
 
     public init(
-        providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), GeminiProvider()],
+        providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), GeminiProvider(), AntigravityProvider()],
         selectedProviderID: ProviderID = .codex,
         refreshIntervalSeconds: Int = 60,
         autoRotateIntervalSeconds: Int = 30,
@@ -78,7 +85,27 @@ public final class QuotaStore {
         } else {
             self.autoRotateIntervalSeconds = autoRotateIntervalSeconds
         }
+        
+        if let persistedExpanded = defaults.stringArray(forKey: Self.expandedProvidersDefaultsKey) {
+            let mapped = persistedExpanded.compactMap { ProviderID(rawValue: $0) }
+            self.expandedProviderIDs = Set(mapped)
+        } else {
+            self.expandedProviderIDs = Set(ProviderID.allCases)
+        }
+        
         self.snapshots = providers.map { ProviderSnapshot(providerID: $0.providerID) }
+    }
+
+    public func isExpanded(_ providerID: ProviderID) -> Bool {
+        expandedProviderIDs.contains(providerID)
+    }
+
+    public func toggleExpanded(_ providerID: ProviderID) {
+        if expandedProviderIDs.contains(providerID) {
+            expandedProviderIDs.remove(providerID)
+        } else {
+            expandedProviderIDs.insert(providerID)
+        }
     }
 
     public func start() {

@@ -38,6 +38,7 @@
 - `Codex`: `~/.codex/auth.json` 사용
 - `Claude`: macOS Keychain의 `Claude Code-credentials` 또는 `~/.claude/.credentials.json` 사용
 - `Gemini/Antigravity`: macOS Keychain의 `gemini-cli-oauth` 또는 `~/.gemini/oauth_creds.json` 사용
+- `Antigravity` (agy): `~/.antigravity_cockpit/cache/quota_api_v1/authorized/` 캐시 파일 사용 (키체인 승인 불필요)
 
 즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex, Claude, 또는 Gemini/Antigravity에 로그인 되어 있어야 합니다.
 
@@ -117,6 +118,16 @@ swift run codex-opero
 macOS 환경과 로컬의 기존 Codex, Claude, 또는 Gemini/Antigravity 로그인 상태가 필요합니다.
 
 ## 릴리즈 노트
+
+<details>
+  <summary>v0.1.8</summary>
+  <ul>
+    <li>Antigravity(agy) CLI 사용량을 독립 탭으로 추가</li>
+    <li><code>~/.antigravity_cockpit/cache/quota_api_v1/authorized/</code> 캐시 파일을 직접 읽어 키체인 승인 없이 사용량 표시</li>
+    <li>모델 그룹을 제공사(Google / Anthropic / OpenAI) 기준으로 분류하여 상세 메뉴에 표시</li>
+    <li>총 4탭 지원: <code>Codex</code> / <code>Claude</code> / <code>Gemini</code> / <code>Antigravity</code></li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.7</summary>

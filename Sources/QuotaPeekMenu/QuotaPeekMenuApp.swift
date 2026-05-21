@@ -58,45 +58,62 @@ private struct ContentView: View {
             Divider()
 
             ForEach(store.snapshots) { snapshot in
-                Button {
-                    store.selectProvider(snapshot.providerID)
-                } label: {
-                    HStack {
-                        Text(snapshot.providerID.displayName)
-                            .foregroundStyle(snapshot.providerID == store.selectedProviderID ? Color.blue : Color.black)
-                        Spacer()
-                        Text(snapshot.menuTitle)
-                            .monospacedDigit()
-                            .foregroundStyle(snapshot.providerID == store.selectedProviderID ? Color.blue : Color.black)
+                HStack(spacing: 8) {
+                    Button {
+                        store.toggleExpanded(snapshot.providerID)
+                    } label: {
+                        Image(systemName: store.isExpanded(snapshot.providerID) ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 14, height: 14)
                     }
-                    .fontWeight(snapshot.providerID == store.selectedProviderID ? .semibold : .regular)
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                if case .loaded(let quota) = snapshot.status {
-                    if quota.detailGroups.isEmpty {
-                        Text("\(quota.primary.name): \(quota.primary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.primary))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("\(quota.secondary.name): \(quota.secondary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.secondary))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(quota.detailGroups, id: \.name) { group in
-                            Text(group.name)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            ForEach(group.windows, id: \.id) { window in
-                                Text("\(window.name): \(window.usedPercent)% used, \(QuotaFormatter.resetString(for: window))")
+                    Button {
+                        store.selectProvider(snapshot.providerID)
+                    } label: {
+                        HStack {
+                            Text(snapshot.providerID.displayName)
+                                .foregroundStyle(snapshot.providerID == store.selectedProviderID ? Color.blue : Color.primary)
+                            Spacer()
+                            Text(snapshot.menuTitle)
+                                .monospacedDigit()
+                                .foregroundStyle(snapshot.providerID == store.selectedProviderID ? Color.blue : Color.primary)
+                        }
+                        .fontWeight(snapshot.providerID == store.selectedProviderID ? .semibold : .regular)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if store.isExpanded(snapshot.providerID) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if case .loaded(let quota) = snapshot.status {
+                            if quota.detailGroups.isEmpty {
+                                Text("\(quota.primary.name): \(quota.primary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.primary))")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                Text("\(quota.secondary.name): \(quota.secondary.usedPercent)% used, \(QuotaFormatter.resetString(for: quota.secondary))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(quota.detailGroups, id: \.name) { group in
+                                    Text(group.name)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    ForEach(group.windows, id: \.id) { window in
+                                        Text("\(window.name): \(window.usedPercent)% used, \(QuotaFormatter.resetString(for: window))")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
                             }
+                        } else if case .failed(let message) = snapshot.status {
+                            Text(message)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
-                } else if case .failed(let message) = snapshot.status {
-                    Text(message)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .padding(.leading, 22)
                 }
             }
 
@@ -186,6 +203,8 @@ private enum ProviderTrayIcon {
             "TrayIcon-Claude"
         case .gemini:
             "TrayIcon-Gemini"
+        case .antigravity:
+            "TrayIcon-Antigravity"
         }
 
         if let bundled = loadFromBundle(named: baseName) {

@@ -4,7 +4,7 @@ import QuotaCore
 @main
 struct QuotaPeekCLI {
     static func main() async {
-        let providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), GeminiProvider()]
+        let providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), GeminiProvider(), AntigravityProvider()]
 
         for provider in providers {
             do {

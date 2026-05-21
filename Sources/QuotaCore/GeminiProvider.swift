@@ -202,21 +202,19 @@ public struct GeminiProvider: UsageProvider {
         ]
 
         return families.compactMap { family in
-            let windows = buckets
+            // Pick any representative bucket from the group — all share the same quota value
+            let representative = buckets
                 .filter { family.matcher($0) && $0.remainingFraction != nil }
                 .sorted { ($0.modelID ?? "") < ($1.modelID ?? "") }
-                .map { bucket in
-                    QuotaWindow(
-                        id: bucket.stableID,
-                        name: displayName(forModelID: bucket.modelID),
-                        usedPercent: usedPercent(from: bucket),
-                        resetAt: bucket.resetAt
-                    )
-                }
-            guard windows.isEmpty == false else {
-                return nil
-            }
-            return QuotaDetailGroup(name: family.name, windows: windows)
+                .first
+            guard let representative else { return nil }
+            let window = QuotaWindow(
+                id: "group:\(family.name)",
+                name: family.name,
+                usedPercent: usedPercent(from: representative),
+                resetAt: representative.resetAt
+            )
+            return QuotaDetailGroup(name: family.name, windows: [window])
         }
     }
 
