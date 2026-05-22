@@ -135,6 +135,13 @@ Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on th
 ## Release Notes
 
 <details>
+  <summary>v0.1.93</summary>
+  <ul>
+    <li>Preserve Antigravity Google bucket reset timers when <code>agy</code> reports <code>Quota available</code> together with <code>Refreshes in ...</code>.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.1.92</summary>
   <ul>
     <li>Fix exhausted Antigravity 3rd Party quota parsing when <code>agy</code> shows only <code>Refreshes in ...</code> without an explicit remaining percentage.</li>

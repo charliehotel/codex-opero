@@ -650,7 +650,7 @@ private struct AgyLiveUsageSnapshot {
 
     private static func bucket(from text: String, now: Date) -> AgyHistoryBucket? {
         if text.localizedCaseInsensitiveContains("Quota available") {
-            return AgyHistoryBucket(usedPercent: 0, resetAt: nil)
+            return AgyHistoryBucket(usedPercent: 0, resetAt: resetDate(from: text, now: now))
         }
 
         guard let remaining = remainingPercent(from: text) else {
@@ -689,7 +689,19 @@ private struct AgyLiveUsageSnapshot {
 
     private static func representativeBucket(from buckets: [AgyHistoryBucket]) -> AgyHistoryBucket? {
         buckets.max { lhs, rhs in
-            lhs.usedPercent < rhs.usedPercent
+            if lhs.usedPercent == rhs.usedPercent {
+                switch (lhs.resetAt, rhs.resetAt) {
+                case (nil, .some):
+                    return true
+                case (.some, nil):
+                    return false
+                case (.some(let lhsReset), .some(let rhsReset)):
+                    return lhsReset < rhsReset
+                case (nil, nil):
+                    return false
+                }
+            }
+            return lhs.usedPercent < rhs.usedPercent
         }
     }
 
