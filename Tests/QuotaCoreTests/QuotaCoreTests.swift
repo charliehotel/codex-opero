@@ -314,7 +314,7 @@ func antigravityProviderPrefersLiveUsageOutput() async throws {
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
-        usageTimeout: 2
+        usageTimeout: 5
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 80)
@@ -352,7 +352,7 @@ func antigravityProviderParsesTerminalRedrawUsageOutput() async throws {
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
-        usageTimeout: 2
+        usageTimeout: 5
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 75)
@@ -445,13 +445,61 @@ func antigravityProviderPreservesResetTimerForAvailableRefreshOnlyGoogleBucket()
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
-        usageTimeout: 2
+        usageTimeout: 5
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 100)
     #expect(quota.primary.usedPercent == 0)
     #expect(quota.secondary.remainingPercent == 0)
     #expect(quota.secondary.usedPercent == 100)
+
+    let resetAt = try #require(quota.primary.resetAt)
+    let resetInterval = resetAt.timeIntervalSince(quota.fetchedAt)
+    #expect(resetInterval > 37 * 60)
+    #expect(resetInterval < 39 * 60)
+}
+
+@Test
+func antigravityProviderReadsResetTimerFromModelRowForAvailableGoogleBucket() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityGoogleRowReset.\(UUID().uuidString)")
+    let cacheDirectory = root.appendingPathComponent("quota")
+    let executableURL = root.appendingPathComponent("agy-google-row-reset-fixture")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let script = """
+    #!/bin/sh
+    printf 'agy ready> '
+    read command
+    if [ "$command" != "/usage" ]; then
+      exit 2
+    fi
+    cat <<'EOF'
+    Model Quota
+    Refreshes in 38 minutes     Gemini 3.5 Flash (High)
+    Quota available
+    Gemini 3.1 Pro (High)
+    Quota available
+    Claude Opus 4.6 (Thinking) ⚠ Refreshes in 5 days, 21 hours
+    Claude Sonnet 4.6 (Thinking) ⚠ Refreshes in 5 days, 21 hours
+    GPT-OSS 120B (Medium) ⚠ Refreshes in 5 days, 21 hours
+    EOF
+    sleep 5
+    """
+    try script.data(using: .utf8)?.write(to: executableURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+    let quota = try await AntigravityProvider(
+        cacheDirectoryURLs: [cacheDirectory],
+        historyDirectoryURLs: [],
+        currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
+        usageExecutableURL: executableURL,
+        usageTimeout: 2
+    ).fetchQuota()
+
+    #expect(quota.primary.remainingPercent == 100)
+    #expect(quota.primary.usedPercent == 0)
 
     let resetAt = try #require(quota.primary.resetAt)
     let resetInterval = resetAt.timeIntervalSince(quota.fetchedAt)

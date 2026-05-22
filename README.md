@@ -135,6 +135,13 @@ Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on th
 ## Release Notes
 
 <details>
+  <summary>v0.1.94</summary>
+  <ul>
+    <li>Fix Antigravity Google bucket reset parsing when terminal redraw output places the reset timer on the same row as the model name.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.1.93</summary>
   <ul>
     <li>Preserve Antigravity Google bucket reset timers when <code>agy</code> reports <code>Quota available</code> together with <code>Refreshes in ...</code>.</li>

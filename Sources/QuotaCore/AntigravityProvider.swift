@@ -567,8 +567,17 @@ private struct AgyLiveUsageSnapshot {
 
             guard let group else { continue }
 
-            let following = lines.dropFirst(index + 1).prefix(4)
-            guard let bucket = AgyLiveUsageSnapshot.bucket(from: following, now: now) else {
+            var candidateLines = [line]
+            for followingLine in lines.dropFirst(index + 1) {
+                if AgyLiveUsageSnapshot.group(for: followingLine) != nil {
+                    break
+                }
+                candidateLines.append(followingLine)
+                if candidateLines.count >= 5 {
+                    break
+                }
+            }
+            guard let bucket = AgyLiveUsageSnapshot.bucket(from: candidateLines, now: now) else {
                 continue
             }
             switch group {
@@ -594,8 +603,22 @@ private struct AgyLiveUsageSnapshot {
         self.thirdParty = thirdParty
     }
 
+    private static func group(for line: String) -> AgyHistoryGroup? {
+        if antigravityGoogleModelNames.contains(where: { line.contains($0) }) {
+            return .google
+        }
+        if antigravityThirdPartyModelNames.contains(where: { line.contains($0) }) {
+            return .thirdParty
+        }
+        return nil
+    }
+
     private static func bucket<S: Sequence>(from lines: S, now: Date) -> AgyHistoryBucket? where S.Element == String {
-        for line in lines {
+        let candidates = Array(lines)
+        if let bucket = bucket(from: candidates.joined(separator: " "), now: now) {
+            return bucket
+        }
+        for line in candidates {
             if let bucket = bucket(from: line, now: now) {
                 return bucket
             }
@@ -654,7 +677,8 @@ private struct AgyLiveUsageSnapshot {
         }
 
         guard let remaining = remainingPercent(from: text) else {
-            if text.range(of: "Refreshes in", options: [.caseInsensitive]) != nil {
+            if text.range(of: "Refreshes in", options: [.caseInsensitive]) != nil,
+               containsExhaustedCue(text) {
                 return AgyHistoryBucket(
                     usedPercent: 100,
                     resetAt: resetDate(from: text, now: now)
@@ -685,6 +709,13 @@ private struct AgyLiveUsageSnapshot {
             return nil
         }
         return Int(text[valueRange])
+    }
+
+    private static func containsExhaustedCue(_ text: String) -> Bool {
+        text.contains("⚠") ||
+            text.localizedCaseInsensitiveContains("warning") ||
+            text.localizedCaseInsensitiveContains("exhausted") ||
+            text.localizedCaseInsensitiveContains("quota exceeded")
     }
 
     private static func representativeBucket(from buckets: [AgyHistoryBucket]) -> AgyHistoryBucket? {
