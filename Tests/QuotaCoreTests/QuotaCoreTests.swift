@@ -361,6 +361,128 @@ func antigravityProviderParsesTerminalRedrawUsageOutput() async throws {
     #expect(quota.secondary.usedPercent == 0)
 }
 
+@Test
+func antigravityProviderParsesExhaustedRefreshOnlyUsageOutput() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityExhausted.\(UUID().uuidString)")
+    let cacheDirectory = root.appendingPathComponent("quota")
+    let executableURL = root.appendingPathComponent("agy-exhausted-fixture")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let script = """
+    #!/bin/sh
+    printf 'agy ready> '
+    read command
+    if [ "$command" != "/usage" ]; then
+      exit 2
+    fi
+    cat <<'EOF'
+    Model Quota
+    Claude Opus 4.6 (Thinking) ⚠ Refreshes in 5 days, 21 hours
+    GPT-OSS 120B (Medium) ⚠ Refreshes in 5 days, 21 hours
+    Gemini 3.5 Flash (High)
+    80% remaining · Refreshes in 38 minutes
+    Claude Sonnet 4.6 (Thinking) ⚠ Refreshes in 5 days, 21 hours
+    EOF
+    sleep 5
+    """
+    try script.data(using: .utf8)?.write(to: executableURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+    let quota = try await AntigravityProvider(
+        cacheDirectoryURLs: [cacheDirectory],
+        historyDirectoryURLs: [],
+        currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
+        usageExecutableURL: executableURL,
+        usageTimeout: 2
+    ).fetchQuota()
+
+    #expect(quota.primary.remainingPercent == 80)
+    #expect(quota.primary.usedPercent == 20)
+    #expect(quota.secondary.remainingPercent == 0)
+    #expect(quota.secondary.usedPercent == 100)
+
+    let resetAt = try #require(quota.secondary.resetAt)
+    let resetInterval = resetAt.timeIntervalSince(quota.fetchedAt)
+    #expect(resetInterval > (5 * 86_400 + 20 * 3_600))
+    #expect(resetInterval < (5 * 86_400 + 22 * 3_600))
+}
+
+@Test
+func antigravityProviderStopsWhenAgyStartsOAuthFlow() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityOAuth.\(UUID().uuidString)")
+    let cacheDirectory = root.appendingPathComponent("quota")
+    let executableURL = root.appendingPathComponent("agy-oauth-fixture")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let script = """
+    #!/bin/sh
+    printf 'agy ready> '
+    read command
+    if [ "$command" != "/usage" ]; then
+      exit 2
+    fi
+    printf 'I0522 auth_manager.go:105] Starting OAuth authentication flow\\n'
+    printf 'I0522 browser.go:55] consumerOAuth: starting OAuth flow\\n'
+    sleep 5
+    """
+    try script.data(using: .utf8)?.write(to: executableURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+    do {
+        _ = try await AntigravityProvider(
+            cacheDirectoryURLs: [cacheDirectory],
+            historyDirectoryURLs: [],
+            currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
+            usageExecutableURL: executableURL,
+            usageTimeout: 5
+        ).fetchQuota()
+        Issue.record("Expected Antigravity OAuth flow failure")
+    } catch {
+        #expect((error as? LocalizedError)?.errorDescription == "agy tried to start Google login; skipping live usage lookup")
+    }
+}
+
+@Test
+func antigravityProviderSanitizesTimedOutTerminalOutput() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityTimeout.\(UUID().uuidString)")
+    let cacheDirectory = root.appendingPathComponent("quota")
+    let executableURL = root.appendingPathComponent("agy-timeout-fixture")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let script = """
+    #!/bin/sh
+    printf 'agy ready> '
+    read command
+    printf '\\033[K\\033[2A\\033[13D\\033[?25h---------------'
+    sleep 5
+    """
+    try script.data(using: .utf8)?.write(to: executableURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+    do {
+        _ = try await AntigravityProvider(
+            cacheDirectoryURLs: [cacheDirectory],
+            historyDirectoryURLs: [],
+            currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
+            usageExecutableURL: executableURL,
+            usageTimeout: 1
+        ).fetchQuota()
+        Issue.record("Expected Antigravity timeout")
+    } catch {
+        let message = (error as? LocalizedError)?.errorDescription ?? ""
+        #expect(message.contains("agy usage command timed out"))
+        #expect(message.contains("[K") == false)
+        #expect(message.contains("[2A") == false)
+        #expect(message.contains("[?25h") == false)
+    }
+}
+
 @MainActor
 @Test
 func selectedProviderSkipsUnavailableProvidersWhenRotating() async {

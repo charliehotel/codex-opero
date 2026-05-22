@@ -198,6 +198,10 @@ public struct AntigravityProvider: UsageProvider {
                 parsedOutput = currentOutput
                 break
             }
+            if let failureMessage = AgyLiveUsageFailure.message(from: currentOutput) {
+                process.terminate()
+                throw ProviderError.other(failureMessage)
+            }
 
             if process.isRunning == false {
                 break
@@ -217,7 +221,7 @@ public struct AntigravityProvider: UsageProvider {
                 return outputString
             }
             process.terminate()
-            throw ProviderError.other("agy usage command timed out: \(outputString.suffix(500))")
+            throw ProviderError.other(AgyLiveUsageFailure.timeoutMessage(from: outputString))
         }
 
         let waitUntil = Date().addingTimeInterval(1)
@@ -236,7 +240,7 @@ public struct AntigravityProvider: UsageProvider {
             if AgyLiveUsageSnapshot(output: outputString) != nil {
                 return outputString
             }
-            throw ProviderError.other(outputString)
+            throw ProviderError.other(AgyLiveUsageFailure.message(from: outputString) ?? AgyLiveUsageFailure.commandFailedMessage(from: outputString))
         }
         return output.string
     }
@@ -650,6 +654,12 @@ private struct AgyLiveUsageSnapshot {
         }
 
         guard let remaining = remainingPercent(from: text) else {
+            if text.range(of: "Refreshes in", options: [.caseInsensitive]) != nil {
+                return AgyHistoryBucket(
+                    usedPercent: 100,
+                    resetAt: resetDate(from: text, now: now)
+                )
+            }
             return nil
         }
         let used = max(0, min(100, 100 - remaining))
@@ -718,6 +728,49 @@ private struct AgyLiveUsageSnapshot {
         }
 
         return seconds
+    }
+}
+
+private enum AgyLiveUsageFailure {
+    static func message(from output: String) -> String? {
+        let text = sanitizedOutput(output)
+        if text.localizedCaseInsensitiveContains("consumerOAuth: starting OAuth flow") ||
+            text.localizedCaseInsensitiveContains("Starting OAuth authentication flow") {
+            return "agy tried to start Google login; skipping live usage lookup"
+        }
+        if text.localizedCaseInsensitiveContains("no such host") ||
+            text.localizedCaseInsensitiveContains("network is unreachable") ||
+            text.localizedCaseInsensitiveContains("could not resolve host") {
+            return "network unavailable"
+        }
+        if text.localizedCaseInsensitiveContains("You are not logged into Antigravity") {
+            return "not logged into Antigravity"
+        }
+        return nil
+    }
+
+    static func timeoutMessage(from output: String) -> String {
+        let text = sanitizedOutput(output)
+        guard text.isEmpty == false else {
+            return "agy usage command timed out"
+        }
+        return "agy usage command timed out: \(String(text.suffix(160)))"
+    }
+
+    static func commandFailedMessage(from output: String) -> String {
+        let text = sanitizedOutput(output)
+        guard text.isEmpty == false else {
+            return "agy usage command failed"
+        }
+        return text
+    }
+
+    private static func sanitizedOutput(_ output: String) -> String {
+        output
+            .strippingANSIEscapeSequences()
+            .replacingControlCharactersWithSpaces()
+            .removingCommonANSIRemnants()
+            .collapsingWhitespace()
     }
 }
 

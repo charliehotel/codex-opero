@@ -135,6 +135,13 @@ Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on th
 ## Release Notes
 
 <details>
+  <summary>v0.1.92</summary>
+  <ul>
+    <li>Fix exhausted Antigravity 3rd Party quota parsing when <code>agy</code> shows only <code>Refreshes in ...</code> without an explicit remaining percentage.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.1.91</summary>
   <ul>
     <li>Fix Antigravity live usage parsing when <code>agy /usage</code> renders quota data through terminal redraw escape sequences.</li>
