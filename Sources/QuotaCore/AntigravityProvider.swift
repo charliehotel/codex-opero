@@ -9,6 +9,9 @@ public struct AntigravityProvider: UsageProvider {
     private let currentAccountURL: URL
     private let usageExecutableURL: URL?
     private let usageTimeout: TimeInterval
+    private let ideMainLogURL: URL?
+    private let ideSession: URLSession
+    private let ideRequestTimeout: TimeInterval
 
     public init(
         cacheDirectoryURLs: [URL] = [
@@ -27,20 +30,47 @@ public struct AntigravityProvider: UsageProvider {
             .appendingPathComponent(".antigravity_cockpit/current_account.json"),
         usageExecutableURL: URL? = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".local/bin/agy"),
-        usageTimeout: TimeInterval = 30
+        usageTimeout: TimeInterval = 30,
+        ideMainLogURL: URL? = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/Antigravity/main.log"),
+        ideSession: URLSession = .shared,
+        ideRequestTimeout: TimeInterval = 5
     ) {
         self.cacheDirectoryURLs = cacheDirectoryURLs
         self.historyDirectoryURLs = historyDirectoryURLs
         self.currentAccountURL = currentAccountURL
         self.usageExecutableURL = usageExecutableURL
         self.usageTimeout = usageTimeout
+        self.ideMainLogURL = ideMainLogURL
+        self.ideSession = ideSession
+        self.ideRequestTimeout = ideRequestTimeout
     }
 
     public func fetchQuota() async throws -> ProviderQuota {
-        if let quota = try fetchLiveUsageQuota() {
+        if let quota = try? await fetchIDEUsageQuota() {
             return quota
         }
 
+        var liveError: Error?
+        do {
+            if let quota = try fetchLiveUsageQuota() {
+                return quota
+            }
+        } catch {
+            liveError = error
+        }
+
+        do {
+            return try fetchCachedQuota()
+        } catch {
+            if let liveError {
+                throw liveError
+            }
+            throw error
+        }
+    }
+
+    private func fetchCachedQuota() throws -> ProviderQuota {
         let cache = try loadLatestCache()
         let models = visibleModels(from: cache)
         let history = try? loadLatestHistory(preferredEmail: cache.email ?? loadCurrentAccountEmail())
@@ -79,6 +109,71 @@ public struct AntigravityProvider: UsageProvider {
         )
     }
 
+    // MARK: - Antigravity 2.0 IDE loading
+
+    private func fetchIDEUsageQuota() async throws -> ProviderQuota? {
+        guard let connection = latestIDEConnectionInfo() else {
+            return nil
+        }
+
+        let httpPort = connection.httpsPort + 1
+        guard let url = URL(
+            string: "http://127.0.0.1:\(httpPort)/exa.language_server_pb.LanguageServerService/GetAvailableModels"
+        ) else {
+            return nil
+        }
+
+        var request = URLRequest(url: url, timeoutInterval: ideRequestTimeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("1", forHTTPHeaderField: "Connect-Protocol-Version")
+        request.setValue(connection.csrfToken, forHTTPHeaderField: "x-codeium-csrf-token")
+        request.httpBody = Data("{}".utf8)
+
+        let (data, response) = try await ideSession.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw ProviderError.badResponse
+        }
+        guard http.statusCode == 200 else {
+            throw ProviderError.http(http.statusCode)
+        }
+        guard let snapshot = AgyIDEAvailableModelsSnapshot(data: data) else {
+            throw ProviderError.unsupportedPayload
+        }
+
+        return quotaFromBuckets(google: snapshot.google, thirdParty: snapshot.thirdParty)
+    }
+
+    private func latestIDEConnectionInfo() -> AgyIDEConnectionInfo? {
+        guard
+            let ideMainLogURL,
+            FileManager.default.fileExists(atPath: ideMainLogURL.path),
+            let log = try? String(contentsOf: ideMainLogURL, encoding: .utf8),
+            let csrfToken = lastCapture(in: log, pattern: #"--csrf_token\s+([0-9A-Za-z-]+)"#),
+            let portText = lastCapture(in: log, pattern: #"Local:\s+https://127\.0\.0\.1:(\d+)/"#),
+            let httpsPort = Int(portText)
+        else {
+            return nil
+        }
+        return AgyIDEConnectionInfo(httpsPort: httpsPort, csrfToken: csrfToken)
+    }
+
+    private func lastCapture(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.matches(in: text, range: range).last.flatMap { match in
+            guard
+                match.numberOfRanges > 1,
+                let valueRange = Range(match.range(at: 1), in: text)
+            else {
+                return nil
+            }
+            return String(text[valueRange])
+        }
+    }
+
     // MARK: - Live usage loading
 
     private func fetchLiveUsageQuota() throws -> ProviderQuota? {
@@ -94,48 +189,7 @@ public struct AntigravityProvider: UsageProvider {
             throw ProviderError.other("agy usage output did not contain quota data")
         }
 
-        return ProviderQuota(
-            providerID: providerID,
-            primary: QuotaWindow(
-                id: "group:Google",
-                name: "Google",
-                usedPercent: usage.google.usedPercent,
-                resetAt: usage.google.resetAt
-            ),
-            secondary: QuotaWindow(
-                id: "group:3rd Party",
-                name: "3rd Party",
-                usedPercent: usage.thirdParty.usedPercent,
-                resetAt: usage.thirdParty.resetAt
-            ),
-            fetchedAt: Date(),
-            detailGroups: [
-                QuotaDetailGroup(
-                    name: "Google",
-                    windows: [
-                        QuotaWindow(
-                            id: "group:Google",
-                            name: "Google",
-                            usedPercent: usage.google.usedPercent,
-                            resetAt: usage.google.resetAt
-                        )
-                    ],
-                    modelNames: antigravityGoogleModelNames
-                ),
-                QuotaDetailGroup(
-                    name: "3rd Party",
-                    windows: [
-                        QuotaWindow(
-                            id: "group:3rd Party",
-                            name: "3rd Party",
-                            usedPercent: usage.thirdParty.usedPercent,
-                            resetAt: usage.thirdParty.resetAt
-                        )
-                    ],
-                    modelNames: antigravityThirdPartyModelNames
-                ),
-            ]
-        )
+        return quotaFromBuckets(google: usage.google, thirdParty: usage.thirdParty)
     }
 
     private func runUsageCommand(executableURL: URL) throws -> String {
@@ -375,18 +429,64 @@ public struct AntigravityProvider: UsageProvider {
     // MARK: - Bucket selection
 
     private func bucketRepresentative(from models: [AgyModel], ids: [String]) -> AgyModel? {
+        let now = Date()
         let bucketModels = ids.compactMap { id in models.first(where: { $0.id == id }) }
         return bucketModels.min { lhs, rhs in
-            let lhsRemaining = lhs.raw.quotaInfo?.remainingFraction ?? 1
-            let rhsRemaining = rhs.raw.quotaInfo?.remainingFraction ?? 1
+            let lhsRemaining = remainingFraction(from: lhs.raw.quotaInfo, now: now)
+            let rhsRemaining = remainingFraction(from: rhs.raw.quotaInfo, now: now)
             return lhsRemaining < rhsRemaining
         }
     }
 
     private func usedPercent(from model: AgyModel) -> Int {
-        guard let fraction = model.raw.quotaInfo?.remainingFraction else { return 0 }
+        let fraction = remainingFraction(from: model.raw.quotaInfo)
         let used = (1.0 - fraction) * 100
         return max(0, min(100, Int(used.rounded())))
+    }
+
+    private func quotaFromBuckets(google: AgyHistoryBucket, thirdParty: AgyHistoryBucket) -> ProviderQuota {
+        let googleWindow = QuotaWindow(
+            id: "group:Google",
+            name: "Google",
+            usedPercent: google.usedPercent,
+            resetAt: google.resetAt
+        )
+        let thirdPartyWindow = QuotaWindow(
+            id: "group:3rd Party",
+            name: "3rd Party",
+            usedPercent: thirdParty.usedPercent,
+            resetAt: thirdParty.resetAt
+        )
+
+        return ProviderQuota(
+            providerID: providerID,
+            primary: googleWindow,
+            secondary: thirdPartyWindow,
+            fetchedAt: Date(),
+            detailGroups: [
+                QuotaDetailGroup(
+                    name: "Google",
+                    windows: [googleWindow],
+                    modelNames: antigravityGoogleModelNames
+                ),
+                QuotaDetailGroup(
+                    name: "3rd Party",
+                    windows: [thirdPartyWindow],
+                    modelNames: antigravityThirdPartyModelNames
+                ),
+            ]
+        )
+    }
+
+    private func remainingFraction(from quotaInfo: AgyQuotaInfo?, now: Date = Date()) -> Double {
+        guard let quotaInfo else { return 1 }
+        if let remainingFraction = quotaInfo.remainingFraction {
+            return max(0, min(1, remainingFraction))
+        }
+        if let resetAt = quotaInfo.resetDate, resetAt > now {
+            return 0
+        }
+        return 1
     }
 
     // MARK: - Detail groups
@@ -423,7 +523,9 @@ private let antigravityGoogleModelIDs = [
     "gemini-3.1-pro-high",
     "gemini-3.1-pro-low",
     "gemini-3-flash-agent",
+    "gemini-3.5-flash-low",
     "gemini-3-flash",
+    "gemini-pro-agent",
 ]
 
 private let antigravityThirdPartyModelIDs = [
@@ -447,9 +549,11 @@ private let antigravityThirdPartyModelNames = [
 
 private let modelDisplayNameMapping: [String: String] = [
     "gemini-3-flash-agent": "Gemini 3.5 Flash (High)",
+    "gemini-3.5-flash-low": "Gemini 3.5 Flash (Medium)",
     "gemini-3-flash": "Gemini 3.5 Flash (Medium)",
     "gemini-3.1-pro-high": "Gemini 3.1 Pro (High)",
     "gemini-3.1-pro-low": "Gemini 3.1 Pro (Low)",
+    "gemini-pro-agent": "Gemini 3.1 Pro (High)",
     "claude-sonnet-4-6": "Claude Sonnet 4.6 (Thinking)",
     "claude-opus-4-6-thinking": "Claude Opus 4.6 (Thinking)",
     "gpt-oss-120b-medium": "GPT-OSS 120B (Medium)"
@@ -486,6 +590,103 @@ private struct AgyModelPayload: Decodable {
     let modelProvider: String?
 }
 
+private struct AgyIDEAvailableModelsSnapshot {
+    let google: AgyHistoryBucket
+    let thirdParty: AgyHistoryBucket
+
+    init?(data: Data, now: Date = Date()) {
+        guard
+            let payload = try? JSONDecoder.agyDecoder.decode(AgyIDEAvailableModelsResponse.self, from: data),
+            let models = payload.response?.models
+        else {
+            return nil
+        }
+
+        var googleBuckets: [AgyHistoryBucket] = []
+        var thirdPartyBuckets: [AgyHistoryBucket] = []
+
+        for (id, model) in models {
+            guard model.isInternal != true else {
+                continue
+            }
+
+            let displayName = modelDisplayNameMapping[id] ?? model.displayName ?? id
+            let group: AgyHistoryGroup?
+            if antigravityGoogleModelNames.contains(displayName) {
+                group = .google
+            } else if antigravityThirdPartyModelNames.contains(displayName) {
+                group = .thirdParty
+            } else {
+                group = nil
+            }
+
+            guard
+                let group,
+                let bucket = AgyIDEAvailableModelsSnapshot.bucket(from: model.quotaInfo, now: now)
+            else {
+                continue
+            }
+
+            switch group {
+            case .google:
+                googleBuckets.append(bucket)
+            case .thirdParty:
+                thirdPartyBuckets.append(bucket)
+            }
+        }
+
+        guard
+            let google = AgyIDEAvailableModelsSnapshot.representativeBucket(from: googleBuckets),
+            let thirdParty = AgyIDEAvailableModelsSnapshot.representativeBucket(from: thirdPartyBuckets)
+        else {
+            return nil
+        }
+
+        self.google = google
+        self.thirdParty = thirdParty
+    }
+
+    private static func bucket(from quotaInfo: AgyQuotaInfo?, now: Date) -> AgyHistoryBucket? {
+        guard let quotaInfo else {
+            return nil
+        }
+
+        let usedPercent: Int
+        if let remainingFraction = quotaInfo.remainingFraction {
+            let remaining = max(0, min(1, remainingFraction))
+            usedPercent = max(0, min(100, Int(((1 - remaining) * 100).rounded())))
+        } else if let resetAt = quotaInfo.resetDate, resetAt > now {
+            usedPercent = 100
+        } else {
+            usedPercent = 0
+        }
+
+        return AgyHistoryBucket(usedPercent: usedPercent, resetAt: quotaInfo.resetDate)
+    }
+
+    private static func representativeBucket(from buckets: [AgyHistoryBucket]) -> AgyHistoryBucket? {
+        buckets.max { lhs, rhs in
+            if lhs.usedPercent == rhs.usedPercent {
+                switch (lhs.resetAt, rhs.resetAt) {
+                case (nil, .some):
+                    return true
+                case (.some, nil):
+                    return false
+                case (.some(let lhsReset), .some(let rhsReset)):
+                    return lhsReset < rhsReset
+                case (nil, nil):
+                    return false
+                }
+            }
+            return lhs.usedPercent < rhs.usedPercent
+        }
+    }
+}
+
+private struct AgyIDEAvailableModelsResponse: Decodable {
+    let response: AgyPayload?
+}
+
 private struct AgyQuotaInfo: Decodable {
     let remainingFraction: Double?
     let resetTime: String?
@@ -498,6 +699,11 @@ private struct AgyQuotaInfo: Decodable {
 
 private struct AgyCurrentAccount: Decodable {
     let email: String?
+}
+
+private struct AgyIDEConnectionInfo {
+    let httpsPort: Int
+    let csrfToken: String
 }
 
 private enum AgyHistoryGroup {

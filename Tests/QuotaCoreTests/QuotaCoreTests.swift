@@ -167,7 +167,8 @@ func antigravityProviderUsesSharedModelBuckets() async throws {
         cacheDirectoryURLs: [cacheDirectory],
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
-        usageExecutableURL: nil
+        usageExecutableURL: nil,
+        ideMainLogURL: nil
     ).fetchQuota()
 
     #expect(quota.primary.name == "Google")
@@ -250,13 +251,108 @@ func antigravityProviderUsesCurrentAccountAndHistoryBuckets() async throws {
         cacheDirectoryURLs: [cacheDirectory],
         historyDirectoryURLs: [historyDirectory],
         currentAccountURL: currentAccountURL,
-        usageExecutableURL: nil
+        usageExecutableURL: nil,
+        ideMainLogURL: nil
     ).fetchQuota()
 
     #expect(quota.primary.usedPercent == 20)
     #expect(quota.secondary.usedPercent == 100)
     #expect(quota.detailGroups[0].windows.first?.usedPercent == 20)
     #expect(quota.detailGroups[1].windows.first?.usedPercent == 100)
+}
+
+@Test
+func antigravityProviderUsesAntigravityIDELocalModelQuota() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityIDE.\(UUID().uuidString)")
+    let logURL = root.appendingPathComponent("main.log")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let token = "test-csrf-token"
+    let httpsPort = 12345
+    let log = """
+    [2026-05-22 14:34:06.210] [info]
+    Spawning: language_server --https_server_port 0 --csrf_token \(token) --app_data_dir antigravity
+    [2026-05-22 14:34:08.049] [info]    Local:       https://127.0.0.1:\(httpsPort)/
+    """
+    try log.data(using: .utf8)?.write(to: logURL)
+
+    let googleReset = ISO8601DateFormatter().string(from: Date().addingTimeInterval(38 * 60))
+    let thirdPartyReset = ISO8601DateFormatter().string(from: Date().addingTimeInterval(5 * 86_400 + 21 * 3_600))
+    let responseJSON = """
+    {
+      "response": {
+        "models": {
+          "gemini-3.1-pro-high": {
+            "displayName": "Gemini 3.1 Pro (High)",
+            "quotaInfo": {
+              "remainingFraction": 1,
+              "resetTime": "\(googleReset)"
+            }
+          },
+          "gemini-3.5-flash-low": {
+            "displayName": "Gemini 3.5 Flash (Medium)",
+            "quotaInfo": {
+              "remainingFraction": 1,
+              "resetTime": "\(googleReset)"
+            }
+          },
+          "claude-opus-4-6-thinking": {
+            "displayName": "Claude Opus 4.6 (Thinking)",
+            "quotaInfo": {
+              "resetTime": "\(thirdPartyReset)"
+            }
+          },
+          "gpt-oss-120b-medium": {
+            "displayName": "GPT-OSS 120B (Medium)",
+            "quotaInfo": {
+              "resetTime": "\(thirdPartyReset)"
+            }
+          }
+        }
+      }
+    }
+    """
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [AntigravityURLProtocolStub.self]
+    let session = URLSession(configuration: configuration)
+    defer {
+        AntigravityURLProtocolStub.requestHandler = nil
+        session.invalidateAndCancel()
+    }
+
+    AntigravityURLProtocolStub.requestHandler = { request in
+        #expect(request.url?.absoluteString == "http://127.0.0.1:12346/exa.language_server_pb.LanguageServerService/GetAvailableModels")
+        #expect(request.value(forHTTPHeaderField: "x-codeium-csrf-token") == token)
+        #expect(request.value(forHTTPHeaderField: "Connect-Protocol-Version") == "1")
+
+        let httpResponse = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (httpResponse, Data(responseJSON.utf8))
+    }
+
+    let quota = try await AntigravityProvider(
+        cacheDirectoryURLs: [],
+        historyDirectoryURLs: [],
+        currentAccountURL: root.appendingPathComponent("missing_current_account.json"),
+        usageExecutableURL: nil,
+        ideMainLogURL: logURL,
+        ideSession: session
+    ).fetchQuota()
+
+    #expect(quota.primary.remainingPercent == 100)
+    #expect(quota.primary.usedPercent == 0)
+    #expect(quota.primary.resetAt != nil)
+    #expect(quota.secondary.remainingPercent == 0)
+    #expect(quota.secondary.usedPercent == 100)
+    #expect(quota.secondary.resetAt != nil)
+    #expect(quota.detailGroups.map(\.name) == ["Google", "3rd Party"])
 }
 
 @Test
@@ -314,7 +410,8 @@ func antigravityProviderPrefersLiveUsageOutput() async throws {
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
-        usageTimeout: 5
+        usageTimeout: 5,
+        ideMainLogURL: nil
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 80)
@@ -352,7 +449,8 @@ func antigravityProviderParsesTerminalRedrawUsageOutput() async throws {
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
-        usageTimeout: 5
+        usageTimeout: 5,
+        ideMainLogURL: nil
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 75)
@@ -395,7 +493,8 @@ func antigravityProviderParsesExhaustedRefreshOnlyUsageOutput() async throws {
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
-        usageTimeout: 2
+        usageTimeout: 5,
+        ideMainLogURL: nil
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 80)
@@ -445,7 +544,8 @@ func antigravityProviderPreservesResetTimerForAvailableRefreshOnlyGoogleBucket()
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
-        usageTimeout: 5
+        usageTimeout: 5,
+        ideMainLogURL: nil
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 100)
@@ -495,7 +595,8 @@ func antigravityProviderReadsResetTimerFromModelRowForAvailableGoogleBucket() as
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
-        usageTimeout: 2
+        usageTimeout: 5,
+        ideMainLogURL: nil
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 100)
@@ -536,7 +637,8 @@ func antigravityProviderStopsWhenAgyStartsOAuthFlow() async throws {
             historyDirectoryURLs: [],
             currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
             usageExecutableURL: executableURL,
-            usageTimeout: 5
+            usageTimeout: 5,
+            ideMainLogURL: nil
         ).fetchQuota()
         Issue.record("Expected Antigravity OAuth flow failure")
     } catch {
@@ -569,7 +671,8 @@ func antigravityProviderSanitizesTimedOutTerminalOutput() async throws {
             historyDirectoryURLs: [],
             currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
             usageExecutableURL: executableURL,
-            usageTimeout: 1
+            usageTimeout: 1,
+            ideMainLogURL: nil
         ).fetchQuota()
         Issue.record("Expected Antigravity timeout")
     } catch {
@@ -1026,4 +1129,34 @@ func autoRotateIntervalPersistsAcrossStoreInstances() {
 
     let secondStore = QuotaStore(defaults: defaults)
     #expect(secondStore.autoRotateIntervalSeconds == 60)
+}
+
+private final class AntigravityURLProtocolStub: URLProtocol {
+    nonisolated(unsafe) static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let handler = AntigravityURLProtocolStub.requestHandler else {
+            client?.urlProtocol(self, didFailWithError: ProviderError.badResponse)
+            return
+        }
+
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
 }

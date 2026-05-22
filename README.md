@@ -135,6 +135,16 @@ Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on th
 ## Release Notes
 
 <details>
+  <summary>v0.1.95</summary>
+  <ul>
+    <li>Fix Antigravity usage lookup by reading the same local Antigravity 2.0 language server model quota API used by the IDE, instead of depending on the interactive <code>agy /usage</code> terminal UI.</li>
+    <li>Restore Antigravity Google bucket reset timers from the IDE quota payload.</li>
+    <li>Treat Antigravity 3rd Party quota entries with a future reset time but no remaining fraction as exhausted, so they show <code>100% used</code> instead of <code>0% used</code> or a timeout.</li>
+    <li>Keep the older live <code>agy /usage</code> and cache readers as fallback paths when the Antigravity IDE is not running.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.1.94</summary>
   <ul>
     <li>Fix Antigravity Google bucket reset parsing when terminal redraw output places the reset timer on the same row as the model name.</li>
