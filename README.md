@@ -135,6 +135,13 @@ Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on th
 ## Release Notes
 
 <details>
+  <summary>v0.1.91</summary>
+  <ul>
+    <li>Fix Antigravity live usage parsing when <code>agy /usage</code> renders quota data through terminal redraw escape sequences.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.1.9</summary>
   <ul>
     <li>Rework Antigravity usage lookup to prefer live <code>agy /usage</code> output instead of stale quota cache files.</li>

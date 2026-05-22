@@ -575,6 +575,10 @@ private struct AgyLiveUsageSnapshot {
             }
         }
 
+        let flatBuckets = AgyLiveUsageSnapshot.bucketsFromFlatText(output, now: now)
+        googleBuckets.append(contentsOf: flatBuckets.google)
+        thirdPartyBuckets.append(contentsOf: flatBuckets.thirdParty)
+
         guard
             let google = AgyLiveUsageSnapshot.representativeBucket(from: googleBuckets),
             let thirdParty = AgyLiveUsageSnapshot.representativeBucket(from: thirdPartyBuckets)
@@ -588,19 +592,89 @@ private struct AgyLiveUsageSnapshot {
 
     private static func bucket<S: Sequence>(from lines: S, now: Date) -> AgyHistoryBucket? where S.Element == String {
         for line in lines {
-            if line.localizedCaseInsensitiveContains("Quota available") {
-                return AgyHistoryBucket(usedPercent: 0, resetAt: nil)
+            if let bucket = bucket(from: line, now: now) {
+                return bucket
             }
-            guard let remaining = line.firstInteger(before: "% remaining") else {
-                continue
-            }
-            let used = max(0, min(100, 100 - remaining))
-            return AgyHistoryBucket(
-                usedPercent: used,
-                resetAt: resetDate(from: line, now: now)
-            )
         }
         return nil
+    }
+
+    private static func bucketsFromFlatText(_ output: String, now: Date) -> (google: [AgyHistoryBucket], thirdParty: [AgyHistoryBucket]) {
+        let flatText = output
+            .strippingANSIEscapeSequences()
+            .replacingControlCharactersWithSpaces()
+            .removingCommonANSIRemnants()
+            .collapsingWhitespace()
+        let models: [(name: String, group: AgyHistoryGroup)] =
+            antigravityGoogleModelNames.map { ($0, .google) } +
+            antigravityThirdPartyModelNames.map { ($0, .thirdParty) }
+
+        var googleBuckets: [AgyHistoryBucket] = []
+        var thirdPartyBuckets: [AgyHistoryBucket] = []
+
+        for model in models {
+            guard let modelRange = flatText.range(of: model.name, options: [.caseInsensitive]) else {
+                continue
+            }
+
+            var segmentEnd = flatText.endIndex
+            for nextModel in models where nextModel.name != model.name {
+                guard
+                    let nextRange = flatText.range(of: nextModel.name, options: [.caseInsensitive], range: modelRange.upperBound..<flatText.endIndex),
+                    nextRange.lowerBound < segmentEnd
+                else {
+                    continue
+                }
+                segmentEnd = nextRange.lowerBound
+            }
+
+            let segment = String(flatText[modelRange.upperBound..<segmentEnd])
+            guard let bucket = bucket(from: segment, now: now) else {
+                continue
+            }
+
+            switch model.group {
+            case .google:
+                googleBuckets.append(bucket)
+            case .thirdParty:
+                thirdPartyBuckets.append(bucket)
+            }
+        }
+
+        return (googleBuckets, thirdPartyBuckets)
+    }
+
+    private static func bucket(from text: String, now: Date) -> AgyHistoryBucket? {
+        if text.localizedCaseInsensitiveContains("Quota available") {
+            return AgyHistoryBucket(usedPercent: 0, resetAt: nil)
+        }
+
+        guard let remaining = remainingPercent(from: text) else {
+            return nil
+        }
+        let used = max(0, min(100, 100 - remaining))
+        return AgyHistoryBucket(
+            usedPercent: used,
+            resetAt: resetDate(from: text, now: now)
+        )
+    }
+
+    private static func remainingPercent(from text: String) -> Int? {
+        if let remaining = text.firstInteger(before: "% remaining") {
+            return remaining
+        }
+
+        guard let regex = try? NSRegularExpression(pattern: #"(\d+)\s*%\s*remaining"#, options: [.caseInsensitive]) else {
+            return nil
+        }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard
+            let match = regex.firstMatch(in: text, range: range),
+            let valueRange = Range(match.range(at: 1), in: text)
+        else {
+            return nil
+        }
+        return Int(text[valueRange])
     }
 
     private static func representativeBucket(from buckets: [AgyHistoryBucket]) -> AgyHistoryBucket? {
@@ -722,6 +796,27 @@ private extension String {
         String(unicodeScalars.filter { scalar in
             scalar.value >= 0x20 || scalar == "\t"
         })
+    }
+
+    func replacingControlCharactersWithSpaces() -> String {
+        components(separatedBy: .controlCharacters).joined(separator: " ")
+    }
+
+    func removingCommonANSIRemnants() -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"\[[0-9;?]*[ -/]*[@-~]"#) else {
+            return self
+        }
+        let range = NSRange(startIndex..<endIndex, in: self)
+        return regex.stringByReplacingMatches(in: self, range: range, withTemplate: " ")
+    }
+
+    func collapsingWhitespace() -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"\s+"#) else {
+            return self
+        }
+        let range = NSRange(startIndex..<endIndex, in: self)
+        return regex.stringByReplacingMatches(in: self, range: range, withTemplate: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func firstInteger(before suffix: String) -> Int? {

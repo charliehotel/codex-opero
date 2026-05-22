@@ -325,6 +325,42 @@ func antigravityProviderPrefersLiveUsageOutput() async throws {
     #expect(quota.detailGroups[1].windows.first?.usedPercent == 0)
 }
 
+@Test
+func antigravityProviderParsesTerminalRedrawUsageOutput() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityRedraw.\(UUID().uuidString)")
+    let cacheDirectory = root.appendingPathComponent("quota")
+    let executableURL = root.appendingPathComponent("agy-redraw-fixture")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let script = """
+    #!/bin/sh
+    printf 'agy ready> '
+    read command
+    if [ "$command" != "/usage" ]; then
+      exit 2
+    fi
+    printf '\\033[2J\\033[35mGemini 3.5 Flash (High)\\033[m\\033[K 75%% remaining · Refreshes in 2h 10m \\033[35mClaude Sonnet 4.6 (Thinking)\\033[m\\033[K Quota available '
+    sleep 5
+    """
+    try script.data(using: .utf8)?.write(to: executableURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+    let quota = try await AntigravityProvider(
+        cacheDirectoryURLs: [cacheDirectory],
+        historyDirectoryURLs: [],
+        currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
+        usageExecutableURL: executableURL,
+        usageTimeout: 2
+    ).fetchQuota()
+
+    #expect(quota.primary.remainingPercent == 75)
+    #expect(quota.primary.usedPercent == 25)
+    #expect(quota.secondary.remainingPercent == 100)
+    #expect(quota.secondary.usedPercent == 0)
+}
+
 @MainActor
 @Test
 func selectedProviderSkipsUnavailableProvidersWhenRotating() async {
