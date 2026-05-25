@@ -509,6 +509,63 @@ func antigravityProviderParsesExhaustedRefreshOnlyUsageOutput() async throws {
 }
 
 @Test
+func antigravityProviderParsesStandaloneZeroPercentUsageOutput() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityZeroPercent.\(UUID().uuidString)")
+    let cacheDirectory = root.appendingPathComponent("quota")
+    let executableURL = root.appendingPathComponent("agy-zero-percent-fixture")
+    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let script = """
+    #!/bin/sh
+    printf 'agy ready> '
+    read command
+    if [ "$command" != "/usage" ]; then
+      exit 2
+    fi
+    cat <<'EOF'
+    Model Quota
+    Gemini 3.5 Flash (High)
+    Quota available 100%
+    Gemini 3.1 Pro (High)
+    Quota available 100%
+    Claude Sonnet 4.6 (Thinking)
+    --------------- 0%
+    Refreshes in 82h 57m
+    Claude Opus 4.6 (Thinking)
+    --------------- 0%
+    Refreshes in 82h 57m
+    GPT-OSS 120B (Medium)
+    --------------- 0%
+    Refreshes in 82h 57m
+    EOF
+    sleep 5
+    """
+    try script.data(using: .utf8)?.write(to: executableURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+    let quota = try await AntigravityProvider(
+        cacheDirectoryURLs: [cacheDirectory],
+        historyDirectoryURLs: [],
+        currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
+        usageExecutableURL: executableURL,
+        usageTimeout: 5,
+        ideMainLogURL: nil
+    ).fetchQuota()
+
+    #expect(quota.primary.remainingPercent == 100)
+    #expect(quota.primary.usedPercent == 0)
+    #expect(quota.secondary.remainingPercent == 0)
+    #expect(quota.secondary.usedPercent == 100)
+
+    let resetAt = try #require(quota.secondary.resetAt)
+    let resetInterval = resetAt.timeIntervalSince(quota.fetchedAt)
+    #expect(resetInterval > (82 * 3_600 + 56 * 60))
+    #expect(resetInterval < (82 * 3_600 + 58 * 60))
+}
+
+@Test
 func antigravityProviderPreservesResetTimerForAvailableRefreshOnlyGoogleBucket() async throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("QuotaCoreTests.antigravityGoogleReset.\(UUID().uuidString)")
@@ -733,6 +790,57 @@ func selectedProviderSkipsUnavailableProvidersWhenRotating() async {
 
     store.rotateToNextProviderIfNeeded()
     #expect(store.selectedProviderID == .codex)
+}
+
+@MainActor
+@Test
+func refreshPublishesSnapshotsAsProvidersFinishAndSelectsFirstLoadedProvider() async throws {
+    struct DelayedMockProvider: UsageProvider {
+        let providerID: ProviderID
+        let quota: ProviderQuota
+        let delay: Duration
+
+        func fetchQuota() async throws -> ProviderQuota {
+            try await Task.sleep(for: delay)
+            return quota
+        }
+    }
+
+    let defaults = UserDefaults(suiteName: "QuotaCoreTests.incrementalRefresh")!
+    defaults.removePersistentDomain(forName: "QuotaCoreTests.incrementalRefresh")
+
+    let codexQuota = ProviderQuota(
+        providerID: .codex,
+        primary: QuotaWindow(name: "5h", usedPercent: 10, resetAt: nil),
+        secondary: QuotaWindow(name: "7d", usedPercent: 20, resetAt: nil),
+        fetchedAt: Date()
+    )
+    let geminiQuota = ProviderQuota(
+        providerID: .gemini,
+        primary: QuotaWindow(name: "Pro", usedPercent: 30, resetAt: nil),
+        secondary: QuotaWindow(name: "Flash", usedPercent: 40, resetAt: nil),
+        fetchedAt: Date()
+    )
+
+    let store = QuotaStore(
+        providers: [
+            DelayedMockProvider(providerID: .codex, quota: codexQuota, delay: .milliseconds(600)),
+            DelayedMockProvider(providerID: .gemini, quota: geminiQuota, delay: .milliseconds(50)),
+        ],
+        defaults: defaults
+    )
+
+    let refreshTask = Task { await store.refresh() }
+    try await Task.sleep(for: .milliseconds(150))
+
+    #expect(store.snapshot(for: .gemini).quota == geminiQuota)
+    #expect(store.snapshot(for: .codex).quota == nil)
+    #expect(store.selectedProviderID == .gemini)
+
+    await refreshTask.value
+
+    #expect(store.snapshot(for: .codex).quota == codexQuota)
+    #expect(store.snapshot(for: .gemini).quota == geminiQuota)
 }
 
 @MainActor

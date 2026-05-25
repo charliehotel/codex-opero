@@ -25,6 +25,7 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 - Lets you choose the refresh interval from preset options in the menu
 - Lets you choose the auto-rotate interval from preset options in the menu
 - Refreshes automatically at the configured interval and also supports `Refresh Now`
+- Shows each provider as soon as its usage lookup finishes, without waiting for slower providers
 - Sends reset notifications when important usage buckets return to 100%
 - Checks for new GitHub releases about once a week
 - Supports `Launch at Login` when running as a packaged `.app`
@@ -38,7 +39,7 @@ Instead, it reuses existing local authentication state and only fetches usage.
 - `Codex`: uses `~/.codex/auth.json`
 - `Claude`: uses the macOS Keychain item `Claude Code-credentials` or `~/.claude/.credentials.json`
 - `Gemini`: uses the macOS Keychain item `gemini-cli-oauth` or `~/.gemini/oauth_creds.json`
-- `Antigravity` (agy): runs the local `agy` CLI, opens `/usage`, and parses the live quota output; it requires an existing Antigravity login/keyring state
+- `Antigravity` (agy): reads model quota from a running Antigravity IDE local service when available, otherwise falls back to parsing the local `agy /usage` output; it requires an existing Antigravity login/keyring state
 
 That means Codex, Claude, Gemini, or Antigravity must already be logged in on the local machine.
 
@@ -50,7 +51,7 @@ For `Antigravity`, the two menu bar values map to shared quota buckets:
 - `Google`: Gemini 3.1 Pro and Gemini 3.5 Flash variants
 - `3rd Party`: Claude Opus/Sonnet and GPT-OSS variants
 
-`codex-opero` prefers live `agy /usage` output for Antigravity because Antigravity's local JSON quota cache can lag behind what the CLI actually shows.
+`codex-opero` reads Antigravity's IDE quota service first because it is the same source used by the IDE's Model Quota screen. If the IDE service is unavailable, it falls back to live `agy /usage` output; local JSON quota cache is only a last resort because it can lag behind the displayed quota.
 
 If you use `Claude` or `Gemini`, macOS may ask for your password when the app first tries to read the Keychain credentials.  
 Note that this prompt **only appears if you actually use that AI tool and its keychain item exists**. If you do not use Claude or Gemini, no popups for those credentials will appear at all.
@@ -93,6 +94,7 @@ You can also choose the auto-rotate interval from preset options such as `10 sec
 Providers that are currently unavailable and showing `--/--` are skipped automatically.  
 If the menu is open, rotation pauses until the menu closes.  
 During refresh, the app keeps showing the last successful snapshot and only falls back to `--/--` if a provider refresh actually fails.
+At first launch, providers appear as soon as each lookup finishes, and the first successful provider is shown in the menu bar while slower providers continue loading.
 
 ## Install from Release
 
@@ -133,6 +135,15 @@ swift run codex-opero
 Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on the local machine.
 
 ## Release Notes
+
+<details>
+  <summary>v0.1.96</summary>
+  <ul>
+    <li>Parse Antigravity CLI 1.0.2 exhausted 3rd Party quota rows that report a standalone <code>0%</code> with a future refresh timer, so they correctly display as <code>100% used</code>.</li>
+    <li>Publish each provider's quota as soon as its refresh completes instead of waiting for the slowest provider.</li>
+    <li>On initial loading, show the first successfully loaded provider in the menu bar while slower lookups, including Antigravity, continue in the background.</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.95</summary>

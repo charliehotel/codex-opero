@@ -169,14 +169,9 @@ public final class QuotaStore {
                 }
             }
 
-            var updated: [ProviderSnapshot] = []
             for await snapshot in group {
-                updated.append(snapshot)
-            }
-
-            updated.sort { $0.providerID.rawValue < $1.providerID.rawValue }
-            for snapshot in updated {
                 replaceSnapshot(snapshot)
+                selectFirstLoadedProviderIfNeeded(snapshot)
                 if case .loaded(let quota) = snapshot.status {
                     for event in quotaResetDetector.eventsIfNeeded(for: quota) {
                         if await onQuotaReset?(event) == true {
@@ -187,6 +182,16 @@ public final class QuotaStore {
             }
             lastRefresh = Date()
         }
+    }
+
+    private func selectFirstLoadedProviderIfNeeded(_ snapshot: ProviderSnapshot) {
+        guard case .loaded = snapshot.status else {
+            return
+        }
+        guard selectedSnapshot.quota == nil else {
+            return
+        }
+        selectedProviderID = snapshot.providerID
     }
 
     public func snapshot(for providerID: ProviderID) -> ProviderSnapshot {

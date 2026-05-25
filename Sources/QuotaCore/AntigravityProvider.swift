@@ -912,9 +912,29 @@ private struct AgyLiveUsageSnapshot {
             let match = regex.firstMatch(in: text, range: range),
             let valueRange = Range(match.range(at: 1), in: text)
         else {
-            return nil
+            return standalonePercent(from: text)
         }
         return Int(text[valueRange])
+    }
+
+    private static func standalonePercent(from text: String) -> Int? {
+        guard text.range(of: "Refreshes in", options: [.caseInsensitive]) != nil else {
+            return nil
+        }
+        guard let regex = try? NSRegularExpression(pattern: #"(?<!\d)(\d{1,3})\s*%"#) else {
+            return nil
+        }
+
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        let matches = regex.matches(in: text, range: range)
+        guard
+            let match = matches.last,
+            let valueRange = Range(match.range(at: 1), in: text),
+            let value = Int(text[valueRange])
+        else {
+            return nil
+        }
+        return max(0, min(100, value))
     }
 
     private static func containsExhaustedCue(_ text: String) -> Bool {
