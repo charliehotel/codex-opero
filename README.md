@@ -39,7 +39,7 @@ Instead, it reuses existing local authentication state and only fetches usage.
 - `Codex`: uses `~/.codex/auth.json`
 - `Claude`: uses the macOS Keychain item `Claude Code-credentials` or `~/.claude/.credentials.json`
 - `Gemini`: uses the macOS Keychain item `gemini-cli-oauth` or `~/.gemini/oauth_creds.json`
-- `Antigravity` (agy): reads model quota from a running Antigravity IDE local service when available, otherwise falls back to parsing the local `agy /usage` output; it requires an existing Antigravity login/keyring state
+- `Antigravity` (agy): reads model quota only from a running Antigravity IDE local service; it requires an existing Antigravity login state
 
 That means Codex, Claude, Gemini, or Antigravity must already be logged in on the local machine.
 
@@ -51,7 +51,7 @@ For `Antigravity`, the two menu bar values map to shared quota buckets:
 - `Google`: Gemini 3.1 Pro and Gemini 3.5 Flash variants
 - `3rd Party`: Claude Opus/Sonnet and GPT-OSS variants
 
-`codex-opero` reads Antigravity's IDE quota service first because it is the same source used by the IDE's Model Quota screen. If the IDE service is unavailable, it falls back to live `agy /usage` output; local JSON quota cache is only a last resort because it can lag behind the displayed quota.
+`codex-opero` reads Antigravity's IDE quota service because it is the same source used by the IDE's Model Quota screen. For safety, it does not automatically launch `agy` in the background: repeated CLI launches can initiate authentication flows and create IDE workspace entries. Keep the Antigravity app running when reading its quota; if the local service is unavailable, the app displays an explicit availability message instead of launching `agy` or showing stale cache values.
 
 If you use `Claude` or `Gemini`, macOS may ask for your password when the app first tries to read the Keychain credentials.  
 Note that this prompt **only appears if you actually use that AI tool and its keychain item exists**. If you do not use Claude or Gemini, no popups for those credentials will appear at all.
@@ -135,6 +135,15 @@ swift run codex-opero
 Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on the local machine.
 
 ## Release Notes
+
+<details>
+  <summary>v0.1.97</summary>
+  <ul>
+    <li>Stop launching <code>agy</code> automatically during background refreshes; Antigravity quota is now read only from an already running Antigravity app local service.</li>
+    <li>Prevent repeated background CLI authentication attempts that could open Google login tabs and create duplicate Antigravity workspace entries while the Mac is offline or locked.</li>
+    <li>Show a clear message to open the Antigravity app when its local quota service is unavailable, rather than falling back to unsafe CLI launches or stale disk cache.</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.96</summary>

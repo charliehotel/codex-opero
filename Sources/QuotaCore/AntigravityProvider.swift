@@ -12,6 +12,7 @@ public struct AntigravityProvider: UsageProvider {
     private let ideMainLogURL: URL?
     private let ideSession: URLSession
     private let ideRequestTimeout: TimeInterval
+    private let legacyFallbacksEnabled: Bool
 
     public init(
         cacheDirectoryURLs: [URL] = [
@@ -34,7 +35,8 @@ public struct AntigravityProvider: UsageProvider {
         ideMainLogURL: URL? = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/Antigravity/main.log"),
         ideSession: URLSession = .shared,
-        ideRequestTimeout: TimeInterval = 5
+        ideRequestTimeout: TimeInterval = 5,
+        legacyFallbacksEnabled: Bool = false
     ) {
         self.cacheDirectoryURLs = cacheDirectoryURLs
         self.historyDirectoryURLs = historyDirectoryURLs
@@ -44,11 +46,16 @@ public struct AntigravityProvider: UsageProvider {
         self.ideMainLogURL = ideMainLogURL
         self.ideSession = ideSession
         self.ideRequestTimeout = ideRequestTimeout
+        self.legacyFallbacksEnabled = legacyFallbacksEnabled
     }
 
     public func fetchQuota() async throws -> ProviderQuota {
         if let quota = try? await fetchIDEUsageQuota() {
             return quota
+        }
+
+        guard legacyFallbacksEnabled else {
+            throw ProviderError.other("Open Antigravity app to read current quota")
         }
 
         var liveError: Error?

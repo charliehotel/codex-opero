@@ -168,7 +168,8 @@ func antigravityProviderUsesSharedModelBuckets() async throws {
         historyDirectoryURLs: [],
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: nil,
-        ideMainLogURL: nil
+        ideMainLogURL: nil,
+        legacyFallbacksEnabled: true
     ).fetchQuota()
 
     #expect(quota.primary.name == "Google")
@@ -252,7 +253,8 @@ func antigravityProviderUsesCurrentAccountAndHistoryBuckets() async throws {
         historyDirectoryURLs: [historyDirectory],
         currentAccountURL: currentAccountURL,
         usageExecutableURL: nil,
-        ideMainLogURL: nil
+        ideMainLogURL: nil,
+        legacyFallbacksEnabled: true
     ).fetchQuota()
 
     #expect(quota.primary.usedPercent == 20)
@@ -356,6 +358,39 @@ func antigravityProviderUsesAntigravityIDELocalModelQuota() async throws {
 }
 
 @Test
+func antigravityProviderDoesNotAutomaticallyLaunchAgyWithoutIDE() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("QuotaCoreTests.antigravityNoLaunch.\(UUID().uuidString)")
+    let executableURL = root.appendingPathComponent("agy-fixture")
+    let markerURL = root.appendingPathComponent("launched")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let script = """
+    #!/bin/sh
+    touch "\(markerURL.path)"
+    exit 0
+    """
+    try script.data(using: .utf8)?.write(to: executableURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+    do {
+        _ = try await AntigravityProvider(
+            cacheDirectoryURLs: [],
+            historyDirectoryURLs: [],
+            currentAccountURL: root.appendingPathComponent("missing_current_account.json"),
+            usageExecutableURL: executableURL,
+            ideMainLogURL: nil
+        ).fetchQuota()
+        Issue.record("Expected an Antigravity IDE availability failure")
+    } catch {
+        #expect((error as? LocalizedError)?.errorDescription == "Open Antigravity app to read current quota")
+    }
+
+    #expect(FileManager.default.fileExists(atPath: markerURL.path) == false)
+}
+
+@Test
 func antigravityProviderPrefersLiveUsageOutput() async throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("QuotaCoreTests.antigravityLive.\(UUID().uuidString)")
@@ -411,7 +446,8 @@ func antigravityProviderPrefersLiveUsageOutput() async throws {
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
         usageTimeout: 5,
-        ideMainLogURL: nil
+        ideMainLogURL: nil,
+        legacyFallbacksEnabled: true
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 80)
@@ -450,7 +486,8 @@ func antigravityProviderParsesTerminalRedrawUsageOutput() async throws {
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
         usageTimeout: 5,
-        ideMainLogURL: nil
+        ideMainLogURL: nil,
+        legacyFallbacksEnabled: true
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 75)
@@ -494,7 +531,8 @@ func antigravityProviderParsesExhaustedRefreshOnlyUsageOutput() async throws {
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
         usageTimeout: 5,
-        ideMainLogURL: nil
+        ideMainLogURL: nil,
+        legacyFallbacksEnabled: true
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 80)
@@ -551,7 +589,8 @@ func antigravityProviderParsesStandaloneZeroPercentUsageOutput() async throws {
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
         usageTimeout: 5,
-        ideMainLogURL: nil
+        ideMainLogURL: nil,
+        legacyFallbacksEnabled: true
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 100)
@@ -602,7 +641,8 @@ func antigravityProviderPreservesResetTimerForAvailableRefreshOnlyGoogleBucket()
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
         usageTimeout: 5,
-        ideMainLogURL: nil
+        ideMainLogURL: nil,
+        legacyFallbacksEnabled: true
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 100)
@@ -653,7 +693,8 @@ func antigravityProviderReadsResetTimerFromModelRowForAvailableGoogleBucket() as
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: executableURL,
         usageTimeout: 5,
-        ideMainLogURL: nil
+        ideMainLogURL: nil,
+        legacyFallbacksEnabled: true
     ).fetchQuota()
 
     #expect(quota.primary.remainingPercent == 100)
@@ -695,7 +736,8 @@ func antigravityProviderStopsWhenAgyStartsOAuthFlow() async throws {
             currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
             usageExecutableURL: executableURL,
             usageTimeout: 5,
-            ideMainLogURL: nil
+            ideMainLogURL: nil,
+            legacyFallbacksEnabled: true
         ).fetchQuota()
         Issue.record("Expected Antigravity OAuth flow failure")
     } catch {
@@ -729,7 +771,8 @@ func antigravityProviderSanitizesTimedOutTerminalOutput() async throws {
             currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
             usageExecutableURL: executableURL,
             usageTimeout: 1,
-            ideMainLogURL: nil
+            ideMainLogURL: nil,
+            legacyFallbacksEnabled: true
         ).fetchQuota()
         Issue.record("Expected Antigravity timeout")
     } catch {

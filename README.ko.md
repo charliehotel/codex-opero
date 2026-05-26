@@ -39,7 +39,7 @@
 - `Codex`: `~/.codex/auth.json` 사용
 - `Claude`: macOS Keychain의 `Claude Code-credentials` 또는 `~/.claude/.credentials.json` 사용
 - `Gemini`: macOS Keychain의 `gemini-cli-oauth` 또는 `~/.gemini/oauth_creds.json` 사용
-- `Antigravity` (agy): 실행 중인 Antigravity IDE의 로컬 서비스가 있으면 model quota를 먼저 읽고, 없으면 로컬 `agy /usage` 출력을 파싱합니다. 기존 Antigravity 로그인/keyring 상태가 필요합니다
+- `Antigravity` (agy): 실행 중인 Antigravity IDE의 로컬 서비스에서만 model quota를 읽습니다. 기존 Antigravity 로그인 상태가 필요합니다
 
 즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex, Claude, Gemini, 또는 Antigravity에 로그인 되어 있어야 합니다.
 
@@ -51,7 +51,7 @@
 - `Google`: Gemini 3.1 Pro 및 Gemini 3.5 Flash 계열
 - `3rd Party`: Claude Opus/Sonnet 및 GPT-OSS 계열
 
-`codex-opero`는 IDE의 Model Quota 화면과 같은 데이터를 사용하기 위해 Antigravity IDE quota service를 우선 조회합니다. IDE service를 사용할 수 없으면 live `agy /usage` 출력으로 fallback하며, 실제 표시보다 늦게 갱신될 수 있는 로컬 JSON quota cache는 최후의 fallback으로만 사용합니다.
+`codex-opero`는 IDE의 Model Quota 화면과 같은 데이터를 사용하기 위해 Antigravity IDE quota service를 조회합니다. 안전을 위해 백그라운드에서 `agy`를 자동 실행하지 않습니다. 반복적인 CLI 실행은 인증 흐름을 시작하거나 IDE workspace 항목을 만들 수 있습니다. Antigravity 사용량을 조회할 때에는 Antigravity 앱을 실행해두어야 하며, 로컬 service를 사용할 수 없으면 `agy`를 실행하거나 오래된 cache 값을 표시하는 대신 명확한 안내 메시지를 표시합니다.
 
 `Claude` 또는 `Gemini`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.  
 이 팝업은 **사용자가 해당 AI 도구를 로그인하여 사용하고 있으며, 관련 키체인이 존재할 때만 1회** 나타납니다. (해당 AI 도구를 전혀 사용하지 않거나 로그인한 적이 없는 경우 팝업은 전혀 발생하지 않고 자동으로 스킵됩니다.)  
@@ -134,6 +134,15 @@ swift run codex-opero
 macOS 환경과 로컬의 기존 Codex, Claude, Gemini, 또는 Antigravity 로그인 상태가 필요합니다.
 
 ## 릴리즈 노트
+
+<details>
+  <summary>v0.1.97</summary>
+  <ul>
+    <li>백그라운드 refresh 중 <code>agy</code>를 자동 실행하지 않도록 수정하고, 실행 중인 Antigravity 앱의 로컬 service에서만 quota를 읽도록 변경</li>
+    <li>맥이 오프라인 또는 잠금 상태일 때 반복적인 CLI 인증 시도로 Google 로그인 탭과 중복 Antigravity workspace 항목이 생성될 수 있던 원인을 차단</li>
+    <li>Antigravity 로컬 quota service를 사용할 수 없으면 위험한 CLI 실행이나 오래된 disk cache fallback 대신 Antigravity 앱 실행 안내를 표시하도록 변경</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.96</summary>
