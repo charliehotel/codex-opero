@@ -360,7 +360,7 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
     }
 
     AntigravityURLProtocolStub.requestHandler = { request in
-        #expect(request.url?.absoluteString == "http://127.0.0.1:12347/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary")
+        #expect(request.url?.absoluteString == "http://127.0.0.1:12346/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary")
         #expect(request.value(forHTTPHeaderField: "x-codeium-csrf-token") == token)
         #expect(request.value(forHTTPHeaderField: "Connect-Protocol-Version") == "1")
 

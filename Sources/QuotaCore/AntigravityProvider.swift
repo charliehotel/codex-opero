@@ -125,7 +125,7 @@ public struct AntigravityProvider: UsageProvider {
 
         if let data = try? await fetchIDEData(
             connection: connection,
-            portOffset: 2,
+            portOffset: 1,
             method: "RetrieveUserQuotaSummary"
         ), let snapshot = AgyIDEQuotaSummarySnapshot(data: data) {
             return quota(from: snapshot)
