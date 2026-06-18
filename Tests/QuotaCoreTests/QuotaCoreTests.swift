@@ -50,6 +50,15 @@ func updateCheckPolicyComputesNextCheckDelay() {
 }
 
 @Test
+func updateCheckRunsImmediatelyAfterMissedWeeklyWindow() {
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    let lastCheckedAt = now.addingTimeInterval(-(UpdateCheckPolicy.checkInterval + 60 * 60))
+
+    #expect(UpdateCheckPolicy.shouldCheck(now: now, lastCheckedAt: lastCheckedAt))
+    #expect(UpdateCheckPolicy.nextCheckDelay(now: now, lastCheckedAt: lastCheckedAt) == 0)
+}
+
+@Test
 func updateCheckPolicyDetectsNewerStableRelease() throws {
     let current = try #require(AppVersion("0.1.5"))
 
@@ -93,6 +102,17 @@ func updateCheckPolicySuppressesRepeatedPromptWithinCadence() {
         lastPromptedVersion: "0.1.6",
         lastPromptedAt: now.addingTimeInterval(-60)
     ))
+}
+
+@Test
+func updateReleaseRequestUsesBoundedGitHubContract() throws {
+    let url = try #require(URL(string: "https://api.github.com/repos/charliehotel/codex-opero/releases/latest"))
+    let request = ReleaseRequestFactory.make(url: url)
+
+    #expect(request.timeoutInterval == 15)
+    #expect(request.value(forHTTPHeaderField: "User-Agent") == "codex-opero")
+    #expect(request.value(forHTTPHeaderField: "Accept") == "application/vnd.github+json")
+    #expect(request.value(forHTTPHeaderField: "X-GitHub-Api-Version") == "2022-11-28")
 }
 
 @Test
@@ -264,7 +284,7 @@ func antigravityProviderUsesCurrentAccountAndHistoryBuckets() async throws {
 }
 
 @Test
-func antigravityProviderUsesAntigravityIDELocalModelQuota() async throws {
+func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("QuotaCoreTests.antigravityIDE.\(UUID().uuidString)")
     let logURL = root.appendingPathComponent("main.log")
@@ -280,39 +300,53 @@ func antigravityProviderUsesAntigravityIDELocalModelQuota() async throws {
     """
     try log.data(using: .utf8)?.write(to: logURL)
 
-    let googleReset = ISO8601DateFormatter().string(from: Date().addingTimeInterval(38 * 60))
-    let thirdPartyReset = ISO8601DateFormatter().string(from: Date().addingTimeInterval(5 * 86_400 + 21 * 3_600))
+    let googleWeeklyReset = ISO8601DateFormatter().string(from: Date().addingTimeInterval(86_400))
+    let googleFiveHourReset = ISO8601DateFormatter().string(from: Date().addingTimeInterval(3 * 3_600))
+    let thirdPartyWeeklyReset = ISO8601DateFormatter().string(from: Date().addingTimeInterval(6 * 86_400 + 21 * 3_600))
+    let thirdPartyFiveHourReset = ISO8601DateFormatter().string(from: Date().addingTimeInterval(2 * 3_600 + 57 * 60))
     let responseJSON = """
     {
       "response": {
-        "models": {
-          "gemini-3.1-pro-high": {
-            "displayName": "Gemini 3.1 Pro (High)",
-            "quotaInfo": {
-              "remainingFraction": 1,
-              "resetTime": "\(googleReset)"
-            }
+        "groups": [
+          {
+            "displayName": "Gemini Models",
+            "buckets": [
+              {
+                "bucketId": "gemini-weekly",
+                "displayName": "Weekly Limit",
+                "window": "weekly",
+                "remainingFraction": 0.78,
+                "resetTime": "\(googleWeeklyReset)"
+              },
+              {
+                "bucketId": "gemini-5h",
+                "displayName": "Five Hour Limit",
+                "window": "5h",
+                "remainingFraction": 1,
+                "resetTime": "\(googleFiveHourReset)"
+              }
+            ]
           },
-          "gemini-3.5-flash-low": {
-            "displayName": "Gemini 3.5 Flash (Medium)",
-            "quotaInfo": {
-              "remainingFraction": 1,
-              "resetTime": "\(googleReset)"
-            }
-          },
-          "claude-opus-4-6-thinking": {
-            "displayName": "Claude Opus 4.6 (Thinking)",
-            "quotaInfo": {
-              "resetTime": "\(thirdPartyReset)"
-            }
-          },
-          "gpt-oss-120b-medium": {
-            "displayName": "GPT-OSS 120B (Medium)",
-            "quotaInfo": {
-              "resetTime": "\(thirdPartyReset)"
-            }
+          {
+            "displayName": "Claude and GPT models",
+            "buckets": [
+              {
+                "bucketId": "3p-weekly",
+                "displayName": "Weekly Limit",
+                "window": "weekly",
+                "remainingFraction": 0.68,
+                "resetTime": "\(thirdPartyWeeklyReset)"
+              },
+              {
+                "bucketId": "3p-5h",
+                "displayName": "Five Hour Limit",
+                "window": "5h",
+                "remainingFraction": 0.04,
+                "resetTime": "\(thirdPartyFiveHourReset)"
+              }
+            ]
           }
-        }
+        ]
       }
     }
     """
@@ -326,7 +360,7 @@ func antigravityProviderUsesAntigravityIDELocalModelQuota() async throws {
     }
 
     AntigravityURLProtocolStub.requestHandler = { request in
-        #expect(request.url?.absoluteString == "http://127.0.0.1:12346/exa.language_server_pb.LanguageServerService/GetAvailableModels")
+        #expect(request.url?.absoluteString == "http://127.0.0.1:12347/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary")
         #expect(request.value(forHTTPHeaderField: "x-codeium-csrf-token") == token)
         #expect(request.value(forHTTPHeaderField: "Connect-Protocol-Version") == "1")
 
@@ -351,10 +385,16 @@ func antigravityProviderUsesAntigravityIDELocalModelQuota() async throws {
     #expect(quota.primary.remainingPercent == 100)
     #expect(quota.primary.usedPercent == 0)
     #expect(quota.primary.resetAt != nil)
-    #expect(quota.secondary.remainingPercent == 0)
-    #expect(quota.secondary.usedPercent == 100)
+    #expect(quota.secondary.remainingPercent == 4)
+    #expect(quota.secondary.usedPercent == 96)
     #expect(quota.secondary.resetAt != nil)
-    #expect(quota.detailGroups.map(\.name) == ["Google", "3rd Party"])
+    #expect(quota.detailGroups.map(\.name) == ["Gemini Models", "Claude and GPT models"])
+    #expect(quota.detailGroups[0].windows.map(\.id) == ["gemini-5h", "gemini-weekly"])
+    #expect(quota.detailGroups[0].windows.map(\.name) == ["5h", "7d"])
+    #expect(quota.detailGroups[0].windows.map(\.remainingPercent) == [100, 78])
+    #expect(quota.detailGroups[1].windows.map(\.id) == ["3p-5h", "3p-weekly"])
+    #expect(quota.detailGroups[1].windows.map(\.name) == ["5h", "7d"])
+    #expect(quota.detailGroups[1].windows.map(\.remainingPercent) == [4, 68])
 }
 
 @Test

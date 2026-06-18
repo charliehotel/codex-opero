@@ -102,7 +102,7 @@ private struct ContentView: View {
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(.secondary)
                                         ForEach(group.windows, id: \.id) { window in
-                                            Text("\(window.name): \(window.usedPercent)% used, \(QuotaFormatter.resetString(for: window))")
+                                            Text("[\(window.name)]  \(window.usedPercent)% used, \(QuotaFormatter.resetString(for: window))")
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                         }

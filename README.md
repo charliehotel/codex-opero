@@ -46,12 +46,12 @@ That means Codex, Claude, Gemini, or Antigravity must already be logged in on th
 For `Gemini`, the two menu bar values currently map to representative `Pro / Flash` quota buckets rather than the same `5-hour / weekly` windows used by Codex and Claude.  
 When you open the menu, Gemini usage is shown in more detail by `Pro`, `Flash`, and `Flash Lite` model groups.
 
-For `Antigravity`, the two menu bar values map to shared quota buckets:
+For `Antigravity`, the two menu bar values show the remaining 5-hour quota for its two shared model groups:
 
-- `Google`: Gemini 3.1 Pro and Gemini 3.5 Flash variants
-- `3rd Party`: Claude Opus/Sonnet and GPT-OSS variants
+- `Gemini Models`: Gemini Flash and Gemini Pro variants
+- `Claude and GPT models`: Claude Opus/Sonnet and GPT-OSS variants
 
-`codex-opero` reads Antigravity's IDE quota service because it is the same source used by the IDE's Model Quota screen. For safety, it does not automatically launch `agy` in the background: repeated CLI launches can initiate authentication flows and create IDE workspace entries. Keep the Antigravity app running when reading its quota; if the local service is unavailable, the app displays an explicit availability message instead of launching `agy` or showing stale cache values.
+Open the provider details to see compact `[5h]` and `[7d]` rows for each group, with the five-hour limit first. `codex-opero` reads Antigravity's local `RetrieveUserQuotaSummary` service, the same source used by the current Model Quota screen, and retains the older per-model endpoint as a compatibility fallback. For safety, it does not automatically launch `agy` in the background: repeated CLI launches can initiate authentication flows and create IDE workspace entries. Keep the Antigravity app running when reading its quota; if the local service is unavailable, the app displays an explicit availability message instead of launching `agy` or showing stale cache values.
 
 If you use `Claude` or `Gemini`, macOS may ask for your password when the app first tries to read the Keychain credentials.  
 Note that this prompt **only appears if you actually use that AI tool and its keychain item exists**. If you do not use Claude or Gemini, no popups for those credentials will appear at all.
@@ -75,7 +75,7 @@ When this dialog appears, select **`Always Allow`** so `codex-opero` can refresh
 Each bucket is notified only once while it stays at `100%`.  
 It can notify again after usage drops below `100%` and later returns to `100%`.
 
-The app also checks GitHub Releases about once a week.  
+The app checks GitHub Releases about once a week from the last successful check. If the Mac or app was off when the interval elapsed, it checks immediately on the next launch.
 If a newer version is available, it asks whether you want to open the release page in your browser.
 
 ## Auto Rotate
@@ -107,7 +107,7 @@ The easiest way to use `codex-opero` is from the GitHub release.
 
 ## If macOS blocks the app
 
-`codex-opero` is currently distributed as an unsigned app.  
+`codex-opero` is ad-hoc signed for local use, but it is not signed with an Apple Developer ID or notarized.
 If macOS blocks it, use one of the following methods.  
 Only do this for builds you trust.
 
@@ -135,6 +135,18 @@ swift run codex-opero
 Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on the local machine.
 
 ## Release Notes
+
+<details>
+  <summary>v0.2.0</summary>
+  <ul>
+    <li>Support the quota service used by Antigravity 2.1.4 in the current agy 1.0.9 environment.</li>
+    <li>Read the new <code>RetrieveUserQuotaSummary</code> response and show weekly and five-hour limits for both Gemini and Claude/GPT model groups.</li>
+    <li>Display Antigravity detail rows as <code>[5h]</code> followed by <code>[7d]</code>, matching the compact Codex format.</li>
+    <li>Adapt to the new local HTTP listener port while retaining the previous per-model endpoint as a compatibility fallback.</li>
+    <li>Ad-hoc sign packaged app bundles after resources are copied, so local package verification succeeds.</li>
+    <li>Verify immediate update checks after a missed interval, and harden GitHub requests with a timeout, explicit API version, and cancellation-safe scheduling.</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.1.97</summary>

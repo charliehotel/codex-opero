@@ -123,13 +123,37 @@ public struct AntigravityProvider: UsageProvider {
             return nil
         }
 
-        let httpPort = connection.httpsPort + 1
-        guard let url = URL(
-            string: "http://127.0.0.1:\(httpPort)/exa.language_server_pb.LanguageServerService/GetAvailableModels"
-        ) else {
-            return nil
+        if let data = try? await fetchIDEData(
+            connection: connection,
+            portOffset: 2,
+            method: "RetrieveUserQuotaSummary"
+        ), let snapshot = AgyIDEQuotaSummarySnapshot(data: data) {
+            return quota(from: snapshot)
         }
 
+        let data = try await fetchIDEData(
+            connection: connection,
+            portOffset: 1,
+            method: "GetAvailableModels"
+        )
+        guard let snapshot = AgyIDEAvailableModelsSnapshot(data: data) else {
+            throw ProviderError.unsupportedPayload
+        }
+
+        return quotaFromBuckets(google: snapshot.google, thirdParty: snapshot.thirdParty)
+    }
+
+    private func fetchIDEData(
+        connection: AgyIDEConnectionInfo,
+        portOffset: Int,
+        method: String
+    ) async throws -> Data {
+        let httpPort = connection.httpsPort + portOffset
+        guard let url = URL(
+            string: "http://127.0.0.1:\(httpPort)/exa.language_server_pb.LanguageServerService/\(method)"
+        ) else {
+            throw ProviderError.badResponse
+        }
         var request = URLRequest(url: url, timeoutInterval: ideRequestTimeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -144,11 +168,7 @@ public struct AntigravityProvider: UsageProvider {
         guard http.statusCode == 200 else {
             throw ProviderError.http(http.statusCode)
         }
-        guard let snapshot = AgyIDEAvailableModelsSnapshot(data: data) else {
-            throw ProviderError.unsupportedPayload
-        }
-
-        return quotaFromBuckets(google: snapshot.google, thirdParty: snapshot.thirdParty)
+        return data
     }
 
     private func latestIDEConnectionInfo() -> AgyIDEConnectionInfo? {
@@ -485,6 +505,41 @@ public struct AntigravityProvider: UsageProvider {
         )
     }
 
+    private func quota(from snapshot: AgyIDEQuotaSummarySnapshot) -> ProviderQuota? {
+        guard snapshot.groups.count >= 2 else {
+            return nil
+        }
+        let groups = snapshot.groups.map { group in
+            let buckets = group.buckets.sorted { $0.sortOrder < $1.sortOrder }
+            return QuotaDetailGroup(
+                name: group.displayName,
+                windows: buckets.map { bucket in
+                    QuotaWindow(
+                        id: bucket.bucketID,
+                        name: bucket.compactDisplayName,
+                        usedPercent: bucket.usedPercent,
+                        resetAt: bucket.resetDate
+                    )
+                }
+            )
+        }
+        guard
+            let primaryID = snapshot.groups[0].buckets.first(where: { $0.window == "5h" })?.bucketID,
+            let secondaryID = snapshot.groups[1].buckets.first(where: { $0.window == "5h" })?.bucketID,
+            let primary = groups[0].windows.first(where: { $0.id == primaryID }),
+            let secondary = groups[1].windows.first(where: { $0.id == secondaryID })
+        else {
+            return nil
+        }
+        return ProviderQuota(
+            providerID: providerID,
+            primary: primary,
+            secondary: secondary,
+            fetchedAt: Date(),
+            detailGroups: groups
+        )
+    }
+
     private func remainingFraction(from quotaInfo: AgyQuotaInfo?, now: Date = Date()) -> Double {
         guard let quotaInfo else { return 1 }
         if let remainingFraction = quotaInfo.remainingFraction {
@@ -692,6 +747,81 @@ private struct AgyIDEAvailableModelsSnapshot {
 
 private struct AgyIDEAvailableModelsResponse: Decodable {
     let response: AgyPayload?
+}
+
+private struct AgyIDEQuotaSummarySnapshot {
+    let groups: [AgyIDEQuotaSummaryGroup]
+
+    init?(data: Data) {
+        guard
+            let payload = try? JSONDecoder.agyDecoder.decode(AgyIDEQuotaSummaryResponse.self, from: data),
+            let groups = payload.response?.groups,
+            groups.isEmpty == false
+        else {
+            return nil
+        }
+        self.groups = groups
+    }
+}
+
+private struct AgyIDEQuotaSummaryResponse: Decodable {
+    struct Response: Decodable {
+        let groups: [AgyIDEQuotaSummaryGroup]
+    }
+
+    let response: Response?
+}
+
+private struct AgyIDEQuotaSummaryGroup: Decodable {
+    let displayName: String
+    let buckets: [AgyIDEQuotaSummaryBucket]
+}
+
+private struct AgyIDEQuotaSummaryBucket: Decodable {
+    let bucketID: String
+    let displayName: String
+    let window: String
+    let remainingFraction: Double
+    let resetTime: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case bucketID = "bucketId"
+        case displayName
+        case window
+        case remainingFraction
+        case resetTime
+    }
+
+    var usedPercent: Int {
+        let remaining = max(0, min(1, remainingFraction))
+        return max(0, min(100, Int(((1 - remaining) * 100).rounded())))
+    }
+
+    var compactDisplayName: String {
+        switch window {
+        case "5h":
+            return "5h"
+        case "weekly":
+            return "7d"
+        default:
+            return displayName
+        }
+    }
+
+    var sortOrder: Int {
+        switch window {
+        case "5h":
+            return 0
+        case "weekly":
+            return 1
+        default:
+            return 2
+        }
+    }
+
+    var resetDate: Date? {
+        resetTime.flatMap { ISO8601DateFormatter().date(from: $0) }
+    }
 }
 
 private struct AgyQuotaInfo: Decodable {

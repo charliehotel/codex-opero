@@ -27,8 +27,13 @@ final class UpdateChecker {
             var delay = await checkForUpdateIfNeeded()
             while Task.isCancelled == false {
                 if delay > 0 {
-                    try? await Task.sleep(for: .seconds(delay))
+                    do {
+                        try await Task.sleep(for: .seconds(delay))
+                    } catch {
+                        return
+                    }
                 }
+                guard Task.isCancelled == false else { return }
                 delay = await checkForUpdateIfNeeded()
             }
         }
@@ -79,9 +84,7 @@ final class UpdateChecker {
     }
 
     private func fetchLatestRelease() async throws -> LatestRelease {
-        var request = URLRequest(url: apiURL)
-        request.setValue("codex-opero", forHTTPHeaderField: "User-Agent")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        let request = ReleaseRequestFactory.make(url: apiURL)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse,

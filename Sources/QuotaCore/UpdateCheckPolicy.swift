@@ -12,6 +12,16 @@ public struct ReleaseVersionInfo: Equatable, Sendable {
     }
 }
 
+public enum ReleaseRequestFactory {
+    public static func make(url: URL) -> URLRequest {
+        var request = URLRequest(url: url, timeoutInterval: 15)
+        request.setValue("codex-opero", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        return request
+    }
+}
+
 public enum UpdateCheckPolicy {
     public static let checkInterval: TimeInterval = 7 * 24 * 60 * 60
     public static let retryInterval: TimeInterval = 60 * 60

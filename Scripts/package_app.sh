@@ -72,6 +72,8 @@ build_app_bundle() {
     fi
 
     chmod +x "${MACOS_DIR}/${PRODUCT_NAME}"
+    xattr -cr "${APP_DIR}"
+    codesign --force --deep --sign - "${APP_DIR}"
 }
 
 build_dmg() {
