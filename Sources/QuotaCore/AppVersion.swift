@@ -26,6 +26,10 @@ public struct AppVersion: Comparable, Equatable, Sendable, CustomStringConvertib
         components.map(String.init).joined(separator: ".")
     }
 
+    public var displayString: String {
+        "v\(description)"
+    }
+
     public static func < (lhs: AppVersion, rhs: AppVersion) -> Bool {
         let count = max(lhs.components.count, rhs.components.count)
         for index in 0..<count {

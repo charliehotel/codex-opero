@@ -3,7 +3,6 @@ import Foundation
 public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
     case codex
     case claude
-    case gemini
     case antigravity
 
     public var id: String { rawValue }
@@ -14,8 +13,6 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
             return "Codex"
         case .claude:
             return "Claude"
-        case .gemini:
-            return "Gemini"
         case .antigravity:
             return "Antigravity"
         }

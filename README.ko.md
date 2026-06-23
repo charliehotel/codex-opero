@@ -19,15 +19,16 @@
 ## 핵심 기능
 
 - 메뉴 막대에 선택된 provider의 남은 사용량을 두 칸 숫자 형식으로 간단히 표시합니다
-- `Codex`, `Claude`, `Gemini`, `Antigravity` 중 하나를 선택해서 메뉴 막대에 띄울 수 있습니다
+- `Codex`, `Claude`, `Antigravity` 중 하나를 선택해서 메뉴 막대에 띄울 수 있습니다
 - 마지막으로 선택한 provider를 기억합니다
 - `Auto Rotate`를 켜면 사용 가능한 provider를 설정한 간격으로 자동 순환합니다
 - 메뉴에서 refresh 간격을 프리셋으로 선택할 수 있습니다
 - 메뉴에서 auto rotate 간격을 프리셋으로 선택할 수 있습니다
+- 메뉴 하단에서 현재 설치된 앱 버전을 확인하고, 새 버전이 있으면 GitHub Release로 이동할 수 있습니다
 - 설정한 간격으로 자동 새로고침하며, `Refresh Now`도 지원합니다
 - 느린 provider의 조회가 끝나기를 기다리지 않고, 조회가 끝난 provider부터 바로 표시합니다
 - 중요한 사용량 구간이 다시 `100%`가 되면 macOS 알림으로 알려줍니다
-- 약 일주일에 한 번 GitHub 릴리즈 업데이트를 확인합니다
+- 마지막 성공 확인 후 24시간마다 GitHub 릴리즈 업데이트를 확인합니다
 - 패키징된 `.app`에서는 `Launch at Login` 토글을 사용할 수 있습니다
 - 조회에 실패하면 `--/--`로 표시합니다
 
@@ -38,22 +39,22 @@
 
 - `Codex`: `~/.codex/auth.json` 사용
 - `Claude`: macOS Keychain의 `Claude Code-credentials` 또는 `~/.claude/.credentials.json` 사용
-- `Gemini`: macOS Keychain의 `gemini-cli-oauth` 또는 `~/.gemini/oauth_creds.json` 사용
 - `Antigravity` (agy): 실행 중인 Antigravity IDE의 로컬 서비스에서만 model quota를 읽습니다. 기존 Antigravity 로그인 상태가 필요합니다
 
-즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex, Claude, Gemini, 또는 Antigravity에 로그인 되어 있어야 합니다.
+즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex, Claude 또는 Antigravity에 로그인 되어 있어야 합니다.
 
-`Gemini`의 경우 메뉴 막대의 두 칸 숫자는 Codex/Claude의 `5시간 / 주간` 구조와 동일하지 않고, 대표적인 `Pro / Flash` quota 구간을 기준으로 표시합니다.  
-메뉴를 열면 Gemini 사용량은 `Pro`, `Flash`, `Flash Lite` 모델 그룹별로 더 자세히 표시됩니다.
+[Google 공식 정책](https://docs.cloud.google.com/gemini/docs/codeassist/release-notes)에 따라 2026년 6월 18일부터 개인용, Google AI Pro, Google AI Ultra의 Gemini CLI 요청 처리가 중단되어 독립 Gemini provider는 제거했습니다. 개인 사용자의 Gemini 모델 quota는 Antigravity에서 확인할 수 있습니다.
 
-`Antigravity`의 경우 메뉴 막대의 두 칸 숫자는 두 공유 모델 그룹의 5시간 잔여 quota를 표시합니다.
+`Antigravity`의 경우 메뉴 막대의 두 칸 숫자는 두 공유 모델 그룹의 5시간 잔여 quota를 표시합니다. 단, 해당 그룹의 주간 quota를 모두 소진하면 5시간 quota가 남아 있더라도 `0%`로 표시합니다.
 
 - `Gemini Models`: Gemini Flash 및 Gemini Pro 계열
 - `Claude and GPT models`: Claude Opus/Sonnet 및 GPT-OSS 계열
 
 provider 상세 영역을 열면 각 그룹의 `[5h]`, `[7d]` 행을 5시간 구간부터 간결하게 확인할 수 있습니다. `codex-opero`는 현재 Model Quota 화면과 같은 데이터 소스인 Antigravity 로컬 `RetrieveUserQuotaSummary` service를 조회하며, 이전 버전 호환을 위해 기존 모델별 endpoint도 fallback으로 유지합니다. 안전을 위해 백그라운드에서 `agy`를 자동 실행하지 않습니다. 반복적인 CLI 실행은 인증 흐름을 시작하거나 IDE workspace 항목을 만들 수 있습니다. Antigravity 사용량을 조회할 때에는 Antigravity 앱을 실행해두어야 하며, 로컬 service를 사용할 수 없으면 `agy`를 실행하거나 오래된 cache 값을 표시하는 대신 명확한 안내 메시지를 표시합니다.
 
-`Claude` 또는 `Gemini`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.  
+`[5h]` 행의 리셋 시간은 `resets at 오후 2:18`처럼 macOS의 시간 형식에 맞춰 분 단위의 정확한 시각으로 표시합니다. `[7d]` 등 나머지 구간은 기존의 간결한 상대시간 표시를 유지합니다.
+
+`Claude`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.
 이 팝업은 **사용자가 해당 AI 도구를 로그인하여 사용하고 있으며, 관련 키체인이 존재할 때만 1회** 나타납니다. (해당 AI 도구를 전혀 사용하지 않거나 로그인한 적이 없는 경우 팝업은 전혀 발생하지 않고 자동으로 스킵됩니다.)  
 
 `codex-opero`는 일정 간격으로 새로고침하므로, 팝업창이 뜰 때 `허용` 대신 **`항상 허용(Always Allow)`**을 선택하셔야 이후 비밀번호 요구 없이 백그라운드에서 매끄럽게 조회됩니다.
@@ -69,13 +70,13 @@ provider 상세 영역을 열면 각 그룹의 `[5h]`, `[7d]` 행을 5시간 구
 `codex-opero`는 사용량이 다시 회복되었을 때 macOS 알림으로 알려줄 수 있습니다.
 
 - `Codex`, `Claude`: `5h` 또는 `7d` 남은 사용량이 `100%`로 돌아오면 알림을 보냅니다
-- `Gemini`: 대표 `Pro` 또는 `Flash` quota 구간이 `100%`로 돌아오면 알림을 보냅니다
+- `Antigravity`: `Gemini Models` 또는 `Claude and GPT models` 그룹의 사용 가능량이 `100%`로 돌아오면 알림을 보냅니다
 
 각 구간은 `100%` 상태가 유지되는 동안 한 번만 알림을 보냅니다.  
 사용량이 `100%` 아래로 내려갔다가 다시 `100%`로 돌아오면 다시 알림을 보낼 수 있습니다.
 
-또한 마지막으로 성공한 확인 시점부터 약 일주일에 한 번 GitHub Releases를 확인합니다. 확인 예정 시각에 Mac이나 앱이 꺼져 있었다면 다음 앱 실행 때 즉시 확인합니다.
-새 버전이 있으면 릴리즈 페이지를 브라우저로 열지 묻는 팝업을 표시합니다.
+또한 마지막으로 성공한 확인 시점부터 24시간마다 GitHub Releases를 확인합니다. 확인 예정 시각에 Mac이나 앱이 꺼져 있었다면 다음 앱 실행 때 즉시 확인합니다.
+새 버전이 있으면 메뉴 하단의 버전 표시가 `v0.2.1 → v0.2.2`처럼 바뀌고 부드럽게 밝아졌다 흐려집니다. 이 링크를 클릭하면 해당 GitHub Release 페이지를 엽니다. macOS에서 동작 줄이기를 사용하면 애니메이션 없이 정적으로 표시합니다.
 
 ## Auto Rotate
 
@@ -84,7 +85,6 @@ provider 상세 영역을 열면 각 그룹의 `[5h]`, `[7d]` 행을 5시간 구
 
 - `Codex`
 - `Claude`
-- `Gemini`
 - `Antigravity`
 
 refresh 간격은 `1분`, `3분`, `5분`, `15분` 같은 프리셋 중에서 고를 수 있습니다.  
@@ -131,9 +131,22 @@ cd codex-opero
 swift run codex-opero
 ```
 
-macOS 환경과 로컬의 기존 Codex, Claude, Gemini, 또는 Antigravity 로그인 상태가 필요합니다.
+macOS 환경과 로컬의 기존 Codex, Claude 또는 Antigravity 로그인 상태가 필요합니다.
 
 ## 릴리즈 노트
+
+<details>
+  <summary>v0.2.1</summary>
+  <ul>
+    <li>Antigravity 상단 요약은 평소 5시간 잔여량을 표시하고, 해당 그룹의 주간 quota를 모두 소진하면 <code>0%</code>로 표시</li>
+    <li><code>[5h]</code> 리셋 시간을 macOS 시간 형식에 맞춘 정확한 시:분으로 표시</li>
+    <li>메뉴 하단에 현재 앱 버전 표시</li>
+    <li>새 버전 발견 시 하단 버전을 부드러운 펄스 링크로 바꾸고, 클릭하면 해당 GitHub Release 페이지를 열도록 개선</li>
+    <li>업데이트 확인 주기를 일주일에서 마지막 성공 확인 후 24시간으로 단축하고 기존 팝업 제거</li>
+    <li>2026년 6월 18일 개인용 Gemini CLI 종료에 맞춰 독립 Gemini provider 제거</li>
+    <li>기존 Gemini 선택값은 Antigravity로 자동 이전</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.2.0</summary>

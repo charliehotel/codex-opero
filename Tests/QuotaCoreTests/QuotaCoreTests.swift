@@ -9,12 +9,31 @@ func remainingPercentIsClamped() {
 }
 
 @Test
-func resetStringUsesEnglishCompactUnits() {
+func fiveHourResetStringUsesExactLocalTime() throws {
     let window = QuotaWindow(
         name: "5h",
         usedPercent: 16,
+        resetAt: Date(timeIntervalSince1970: 1_719_929_880)
+    )
+    let timeZone = try #require(TimeZone(secondsFromGMT: 0))
+
+    #expect(
+        QuotaFormatter.resetString(
+            for: window,
+            locale: Locale(identifier: "en_US_POSIX"),
+            timeZone: timeZone
+        ) == "resets at 2:18 PM"
+    )
+}
+
+@Test
+func weeklyResetStringUsesEnglishCompactUnits() {
+    let window = QuotaWindow(
+        name: "7d",
+        usedPercent: 16,
         resetAt: Date().addingTimeInterval(4 * 60 * 60)
     )
+
     #expect(QuotaFormatter.resetString(for: window) == "resets in 4h")
 }
 
@@ -34,11 +53,75 @@ func appVersionComparesSemanticTags() throws {
 }
 
 @Test
-func updateCheckPolicyUsesWeeklyCadence() {
+func appVersionUsesPrefixedDisplayString() throws {
+    let version = try #require(AppVersion("0.2.1"))
+
+    #expect(version.displayString == "v0.2.1")
+}
+
+@Test
+func updateCheckPolicyUsesDailyCadence() {
     let now = Date(timeIntervalSince1970: 10_000)
+
+    #expect(UpdateCheckPolicy.checkInterval == 24 * 60 * 60)
     #expect(UpdateCheckPolicy.shouldCheck(now: now, lastCheckedAt: nil))
     #expect(UpdateCheckPolicy.shouldCheck(now: now, lastCheckedAt: now.addingTimeInterval(-UpdateCheckPolicy.checkInterval)))
     #expect(UpdateCheckPolicy.shouldCheck(now: now, lastCheckedAt: now.addingTimeInterval(-60)) == false)
+}
+
+@Test
+func availableUpdateUsesCurrentAndLatestDisplayString() throws {
+    let current = try #require(AppVersion("0.2.1"))
+    let latest = try #require(AppVersion("0.2.2"))
+    let url = try #require(URL(string: "https://github.com/charliehotel/codex-opero/releases/tag/v0.2.2"))
+    let update = AvailableUpdate(
+        currentVersion: current,
+        latestVersion: latest,
+        releaseURL: url
+    )
+
+    #expect(update.displayString == "v0.2.1 → v0.2.2")
+}
+
+@Test
+func updatePolicyRestoresOnlyNewerCachedVersion() throws {
+    let current = try #require(AppVersion("0.2.1"))
+    let releaseURL = "https://github.com/charliehotel/codex-opero/releases/tag/v0.2.2"
+
+    let restored = UpdateCheckPolicy.restoredUpdate(
+        currentVersion: current,
+        cachedVersion: "0.2.2",
+        cachedReleaseURL: releaseURL
+    )
+    let stale = UpdateCheckPolicy.restoredUpdate(
+        currentVersion: current,
+        cachedVersion: "0.2.1",
+        cachedReleaseURL: releaseURL
+    )
+
+    #expect(restored?.latestVersion == AppVersion("0.2.2"))
+    #expect(stale == nil)
+}
+
+@Test
+func updatePolicyRejectsInvalidCachedUpdate() throws {
+    let current = try #require(AppVersion("0.2.1"))
+
+    #expect(UpdateCheckPolicy.restoredUpdate(
+        currentVersion: current,
+        cachedVersion: "not-a-version",
+        cachedReleaseURL: "https://github.com/charliehotel/codex-opero/releases"
+    ) == nil)
+    #expect(UpdateCheckPolicy.restoredUpdate(
+        currentVersion: current,
+        cachedVersion: "0.2.2",
+        cachedReleaseURL: "not a URL"
+    ) == nil)
+    #expect(UpdateCheckPolicy.restoredUpdate(
+        currentVersion: current,
+        cachedVersion: "0.2.2",
+        cachedReleaseURL: "file:///tmp/codex-opero"
+    ) == nil)
 }
 
 @Test
@@ -50,7 +133,7 @@ func updateCheckPolicyComputesNextCheckDelay() {
 }
 
 @Test
-func updateCheckRunsImmediatelyAfterMissedWeeklyWindow() {
+func updateCheckRunsImmediatelyAfterMissedDailyWindow() {
     let now = Date(timeIntervalSince1970: 1_000_000)
     let lastCheckedAt = now.addingTimeInterval(-(UpdateCheckPolicy.checkInterval + 60 * 60))
 
@@ -81,27 +164,74 @@ func updateCheckPolicyDetectsNewerStableRelease() throws {
 }
 
 @Test
-func updateCheckPolicySuppressesRepeatedPromptWithinCadence() {
-    let now = Date(timeIntervalSince1970: 10_000)
+func updatePolicyBuildsAvailableUpdateWithDirectReleaseURL() throws {
+    let current = try #require(AppVersion("0.2.1"))
+    let direct = try #require(URL(string: "https://github.com/charliehotel/codex-opero/releases/tag/v0.2.2"))
+    let fallback = try #require(URL(string: "https://github.com/charliehotel/codex-opero/releases"))
+    let release = ReleaseVersionInfo(
+        tagName: "v0.2.2",
+        prerelease: false,
+        draft: false,
+        releaseURL: direct
+    )
 
-    #expect(UpdateCheckPolicy.shouldPrompt(
-        version: "0.1.6",
-        now: now,
-        lastPromptedVersion: nil,
-        lastPromptedAt: nil
-    ))
-    #expect(UpdateCheckPolicy.shouldPrompt(
-        version: "0.1.6",
-        now: now,
-        lastPromptedVersion: "0.1.6",
-        lastPromptedAt: now.addingTimeInterval(-60)
-    ) == false)
-    #expect(UpdateCheckPolicy.shouldPrompt(
-        version: "0.1.7",
-        now: now,
-        lastPromptedVersion: "0.1.6",
-        lastPromptedAt: now.addingTimeInterval(-60)
-    ))
+    #expect(UpdateCheckPolicy.availableUpdate(
+        latestRelease: release,
+        currentVersion: current,
+        fallbackURL: fallback
+    )?.releaseURL == direct)
+}
+
+@Test
+func updatePolicyFallsBackWhenDirectReleaseURLIsUnavailable() throws {
+    let current = try #require(AppVersion("0.2.1"))
+    let fallback = try #require(URL(string: "https://github.com/charliehotel/codex-opero/releases"))
+
+    let missingURL = ReleaseVersionInfo(
+        tagName: "v0.2.2",
+        prerelease: false,
+        draft: false,
+        releaseURL: nil
+    )
+    let invalidURL = ReleaseVersionInfo(
+        tagName: "v0.2.2",
+        prerelease: false,
+        draft: false,
+        releaseURL: URL(fileURLWithPath: "/tmp/codex-opero")
+    )
+
+    #expect(UpdateCheckPolicy.availableUpdate(
+        latestRelease: missingURL,
+        currentVersion: current,
+        fallbackURL: fallback
+    )?.releaseURL == fallback)
+    #expect(UpdateCheckPolicy.availableUpdate(
+        latestRelease: invalidURL,
+        currentVersion: current,
+        fallbackURL: fallback
+    )?.releaseURL == fallback)
+}
+
+@Test
+func updatePolicyRejectsUnavailableReleaseKinds() throws {
+    let current = try #require(AppVersion("0.2.1"))
+    let fallback = try #require(URL(string: "https://github.com/charliehotel/codex-opero/releases"))
+
+    #expect(UpdateCheckPolicy.availableUpdate(
+        latestRelease: ReleaseVersionInfo(tagName: "v0.2.1", prerelease: false, draft: false),
+        currentVersion: current,
+        fallbackURL: fallback
+    ) == nil)
+    #expect(UpdateCheckPolicy.availableUpdate(
+        latestRelease: ReleaseVersionInfo(tagName: "v0.2.2-beta", prerelease: true, draft: false),
+        currentVersion: current,
+        fallbackURL: fallback
+    ) == nil)
+    #expect(UpdateCheckPolicy.availableUpdate(
+        latestRelease: ReleaseVersionInfo(tagName: "v0.2.2", prerelease: false, draft: true),
+        currentVersion: current,
+        fallbackURL: fallback
+    ) == nil)
 }
 
 @Test
@@ -128,9 +258,31 @@ func loadedSnapshotUsesCompactMenuTitle() {
     #expect(snapshot.menuTitle == "84%/94%")
 }
 
+@MainActor
 @Test
-func geminiProviderIDHasDisplayName() {
-    #expect(ProviderID.gemini.displayName == "Gemini")
+func defaultProvidersExcludeRetiredGemini() {
+    let suiteName = "QuotaCoreTests.defaultProviders"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = QuotaStore(defaults: defaults)
+
+    #expect(store.snapshots.map(\.providerID) == [.codex, .claude, .antigravity])
+}
+
+@MainActor
+@Test
+func persistedGeminiSelectionMigratesToAntigravity() {
+    let suiteName = "QuotaCoreTests.geminiMigration"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    defaults.set("gemini", forKey: QuotaStore.selectedProviderDefaultsKey)
+
+    let store = QuotaStore(defaults: defaults)
+
+    #expect(store.selectedProviderID == .antigravity)
 }
 
 @Test
@@ -315,7 +467,7 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
                 "bucketId": "gemini-weekly",
                 "displayName": "Weekly Limit",
                 "window": "weekly",
-                "remainingFraction": 0.78,
+                "remainingFraction": 0.97,
                 "resetTime": "\(googleWeeklyReset)"
               },
               {
@@ -334,14 +486,14 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
                 "bucketId": "3p-weekly",
                 "displayName": "Weekly Limit",
                 "window": "weekly",
-                "remainingFraction": 0.68,
+                "remainingFraction": 0,
                 "resetTime": "\(thirdPartyWeeklyReset)"
               },
               {
                 "bucketId": "3p-5h",
                 "displayName": "Five Hour Limit",
                 "window": "5h",
-                "remainingFraction": 0.04,
+                "remainingFraction": 0.69,
                 "resetTime": "\(thirdPartyFiveHourReset)"
               }
             ]
@@ -385,16 +537,16 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
     #expect(quota.primary.remainingPercent == 100)
     #expect(quota.primary.usedPercent == 0)
     #expect(quota.primary.resetAt != nil)
-    #expect(quota.secondary.remainingPercent == 4)
-    #expect(quota.secondary.usedPercent == 96)
+    #expect(quota.secondary.remainingPercent == 0)
+    #expect(quota.secondary.usedPercent == 100)
     #expect(quota.secondary.resetAt != nil)
     #expect(quota.detailGroups.map(\.name) == ["Gemini Models", "Claude and GPT models"])
     #expect(quota.detailGroups[0].windows.map(\.id) == ["gemini-5h", "gemini-weekly"])
     #expect(quota.detailGroups[0].windows.map(\.name) == ["5h", "7d"])
-    #expect(quota.detailGroups[0].windows.map(\.remainingPercent) == [100, 78])
+    #expect(quota.detailGroups[0].windows.map(\.remainingPercent) == [100, 97])
     #expect(quota.detailGroups[1].windows.map(\.id) == ["3p-5h", "3p-weekly"])
     #expect(quota.detailGroups[1].windows.map(\.name) == ["5h", "7d"])
-    #expect(quota.detailGroups[1].windows.map(\.remainingPercent) == [4, 68])
+    #expect(quota.detailGroups[1].windows.map(\.remainingPercent) == [69, 0])
 }
 
 @Test
@@ -848,8 +1000,8 @@ func selectedProviderSkipsUnavailableProvidersWhenRotating() async {
         secondary: QuotaWindow(name: "7d", usedPercent: 20, resetAt: nil),
         fetchedAt: Date()
     )
-    let geminiQuota = ProviderQuota(
-        providerID: .gemini,
+    let antigravityQuota = ProviderQuota(
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 30, resetAt: nil),
         secondary: QuotaWindow(name: "Flash", usedPercent: 40, resetAt: nil),
         fetchedAt: Date()
@@ -859,17 +1011,17 @@ func selectedProviderSkipsUnavailableProvidersWhenRotating() async {
         providers: [
             MockProvider(providerID: .codex, quota: codexQuota),
             MockProvider(providerID: .claude, quota: nil),
-            MockProvider(providerID: .gemini, quota: geminiQuota),
+            MockProvider(providerID: .antigravity, quota: antigravityQuota),
         ],
         defaults: defaults
     )
     store.autoRotateEnabled = true
     await store.refresh()
 
-    #expect(store.rotatableProviderIDs() == [.codex, .gemini])
+    #expect(store.rotatableProviderIDs() == [.codex, .antigravity])
 
     store.rotateToNextProviderIfNeeded()
-    #expect(store.selectedProviderID == .gemini)
+    #expect(store.selectedProviderID == .antigravity)
 
     store.rotateToNextProviderIfNeeded()
     #expect(store.selectedProviderID == .codex)
@@ -898,8 +1050,8 @@ func refreshPublishesSnapshotsAsProvidersFinishAndSelectsFirstLoadedProvider() a
         secondary: QuotaWindow(name: "7d", usedPercent: 20, resetAt: nil),
         fetchedAt: Date()
     )
-    let geminiQuota = ProviderQuota(
-        providerID: .gemini,
+    let antigravityQuota = ProviderQuota(
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 30, resetAt: nil),
         secondary: QuotaWindow(name: "Flash", usedPercent: 40, resetAt: nil),
         fetchedAt: Date()
@@ -908,7 +1060,7 @@ func refreshPublishesSnapshotsAsProvidersFinishAndSelectsFirstLoadedProvider() a
     let store = QuotaStore(
         providers: [
             DelayedMockProvider(providerID: .codex, quota: codexQuota, delay: .milliseconds(600)),
-            DelayedMockProvider(providerID: .gemini, quota: geminiQuota, delay: .milliseconds(50)),
+            DelayedMockProvider(providerID: .antigravity, quota: antigravityQuota, delay: .milliseconds(50)),
         ],
         defaults: defaults
     )
@@ -916,14 +1068,14 @@ func refreshPublishesSnapshotsAsProvidersFinishAndSelectsFirstLoadedProvider() a
     let refreshTask = Task { await store.refresh() }
     try await Task.sleep(for: .milliseconds(150))
 
-    #expect(store.snapshot(for: .gemini).quota == geminiQuota)
+    #expect(store.snapshot(for: .antigravity).quota == antigravityQuota)
     #expect(store.snapshot(for: .codex).quota == nil)
-    #expect(store.selectedProviderID == .gemini)
+    #expect(store.selectedProviderID == .antigravity)
 
     await refreshTask.value
 
     #expect(store.snapshot(for: .codex).quota == codexQuota)
-    #expect(store.snapshot(for: .gemini).quota == geminiQuota)
+    #expect(store.snapshot(for: .antigravity).quota == antigravityQuota)
 }
 
 @MainActor
@@ -1051,7 +1203,7 @@ func quotaResetEventRetriesWhenNotificationDeliveryFails() async {
 
 @MainActor
 @Test
-func quotaResetEventUsesGeminiMenuBuckets() async {
+func quotaResetEventUsesAntigravityMenuBuckets() async {
     struct MockProvider: UsageProvider {
         let providerID: ProviderID
         let quota: ProviderQuota
@@ -1061,11 +1213,11 @@ func quotaResetEventUsesGeminiMenuBuckets() async {
         }
     }
 
-    let defaults = UserDefaults(suiteName: "QuotaCoreTests.quotaResetGemini")!
-    defaults.removePersistentDomain(forName: "QuotaCoreTests.quotaResetGemini")
+    let defaults = UserDefaults(suiteName: "QuotaCoreTests.quotaResetAntigravity")!
+    defaults.removePersistentDomain(forName: "QuotaCoreTests.quotaResetAntigravity")
 
     let quota = ProviderQuota(
-        providerID: .gemini,
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 0, resetAt: Date(timeIntervalSince1970: 1_700_100_000)),
         secondary: QuotaWindow(name: "Flash", usedPercent: 20, resetAt: Date(timeIntervalSince1970: 1_800_000_000)),
         fetchedAt: Date(timeIntervalSince1970: 1_700_000_000),
@@ -1085,7 +1237,7 @@ func quotaResetEventUsesGeminiMenuBuckets() async {
     )
     var events: [QuotaResetEvent] = []
     let store = QuotaStore(
-        providers: [MockProvider(providerID: .gemini, quota: quota)],
+        providers: [MockProvider(providerID: .antigravity, quota: quota)],
         defaults: defaults,
         onQuotaReset: { event in
             events.append(event)
@@ -1098,7 +1250,7 @@ func quotaResetEventUsesGeminiMenuBuckets() async {
 
     #expect(events == [
         QuotaResetEvent(
-            providerID: .gemini,
+            providerID: .antigravity,
             windowID: "Pro",
             windowName: "Pro",
             remainingPercent: 100,
@@ -1110,7 +1262,7 @@ func quotaResetEventUsesGeminiMenuBuckets() async {
 
 @MainActor
 @Test
-func quotaResetEventDeduplicatesIdenticalGeminiMarkers() async {
+func quotaResetEventDeduplicatesIdenticalAntigravityMarkers() async {
     struct MockProvider: UsageProvider {
         let providerID: ProviderID
         let quota: ProviderQuota
@@ -1120,19 +1272,19 @@ func quotaResetEventDeduplicatesIdenticalGeminiMarkers() async {
         }
     }
 
-    let defaults = UserDefaults(suiteName: "QuotaCoreTests.quotaResetGeminiDuplicate")!
-    defaults.removePersistentDomain(forName: "QuotaCoreTests.quotaResetGeminiDuplicate")
+    let defaults = UserDefaults(suiteName: "QuotaCoreTests.quotaResetAntigravityDuplicate")!
+    defaults.removePersistentDomain(forName: "QuotaCoreTests.quotaResetAntigravityDuplicate")
 
     let resetAt = Date(timeIntervalSince1970: 1_700_100_000)
     let quota = ProviderQuota(
-        providerID: .gemini,
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 0, resetAt: resetAt),
         secondary: QuotaWindow(name: "Pro", usedPercent: 0, resetAt: resetAt),
         fetchedAt: Date(timeIntervalSince1970: 1_700_000_000)
     )
     var events: [QuotaResetEvent] = []
     let store = QuotaStore(
-        providers: [MockProvider(providerID: .gemini, quota: quota)],
+        providers: [MockProvider(providerID: .antigravity, quota: quota)],
         defaults: defaults,
         onQuotaReset: { event in
             events.append(event)
@@ -1147,9 +1299,9 @@ func quotaResetEventDeduplicatesIdenticalGeminiMarkers() async {
 
 @MainActor
 @Test
-func quotaResetEventDoesNotRepeatWhileGeminiStaysFullEvenIfResetTimeChanges() async {
+func quotaResetEventDoesNotRepeatWhileAntigravityStaysFullEvenIfResetTimeChanges() async {
     actor MockProvider: UsageProvider {
-        let providerID: ProviderID = .gemini
+        let providerID: ProviderID = .antigravity
         var quotas: [ProviderQuota]
 
         init(quotas: [ProviderQuota]) {
@@ -1164,17 +1316,17 @@ func quotaResetEventDoesNotRepeatWhileGeminiStaysFullEvenIfResetTimeChanges() as
         }
     }
 
-    let defaults = UserDefaults(suiteName: "QuotaCoreTests.quotaResetGeminiStableFull")!
-    defaults.removePersistentDomain(forName: "QuotaCoreTests.quotaResetGeminiStableFull")
+    let defaults = UserDefaults(suiteName: "QuotaCoreTests.quotaResetAntigravityStableFull")!
+    defaults.removePersistentDomain(forName: "QuotaCoreTests.quotaResetAntigravityStableFull")
 
     let firstFull = ProviderQuota(
-        providerID: .gemini,
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 0, resetAt: Date(timeIntervalSince1970: 1_700_100_000)),
         secondary: QuotaWindow(name: "Flash", usedPercent: 20, resetAt: Date(timeIntervalSince1970: 1_800_000_000)),
         fetchedAt: Date(timeIntervalSince1970: 1_700_000_000)
     )
     let stillFullWithDifferentResetTime = ProviderQuota(
-        providerID: .gemini,
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 0, resetAt: Date(timeIntervalSince1970: 1_700_100_060)),
         secondary: QuotaWindow(name: "Flash", usedPercent: 20, resetAt: Date(timeIntervalSince1970: 1_800_000_000)),
         fetchedAt: Date(timeIntervalSince1970: 1_700_000_060)
@@ -1199,7 +1351,7 @@ func quotaResetEventDoesNotRepeatWhileGeminiStaysFullEvenIfResetTimeChanges() as
 @Test
 func quotaResetEventCanFireAgainAfterUsageDropsBelowFull() async {
     actor MockProvider: UsageProvider {
-        let providerID: ProviderID = .gemini
+        let providerID: ProviderID = .antigravity
         var quotas: [ProviderQuota]
 
         init(quotas: [ProviderQuota]) {
@@ -1214,23 +1366,23 @@ func quotaResetEventCanFireAgainAfterUsageDropsBelowFull() async {
         }
     }
 
-    let defaults = UserDefaults(suiteName: "QuotaCoreTests.quotaResetGeminiRefill")!
-    defaults.removePersistentDomain(forName: "QuotaCoreTests.quotaResetGeminiRefill")
+    let defaults = UserDefaults(suiteName: "QuotaCoreTests.quotaResetAntigravityRefill")!
+    defaults.removePersistentDomain(forName: "QuotaCoreTests.quotaResetAntigravityRefill")
 
     let full = ProviderQuota(
-        providerID: .gemini,
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 0, resetAt: Date(timeIntervalSince1970: 1_700_100_000)),
         secondary: QuotaWindow(name: "Flash", usedPercent: 20, resetAt: Date(timeIntervalSince1970: 1_800_000_000)),
         fetchedAt: Date(timeIntervalSince1970: 1_700_000_000)
     )
     let used = ProviderQuota(
-        providerID: .gemini,
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 10, resetAt: Date(timeIntervalSince1970: 1_700_100_060)),
         secondary: QuotaWindow(name: "Flash", usedPercent: 20, resetAt: Date(timeIntervalSince1970: 1_800_000_000)),
         fetchedAt: Date(timeIntervalSince1970: 1_700_000_060)
     )
     let refilled = ProviderQuota(
-        providerID: .gemini,
+        providerID: .antigravity,
         primary: QuotaWindow(name: "Pro", usedPercent: 0, resetAt: Date(timeIntervalSince1970: 1_700_200_000)),
         secondary: QuotaWindow(name: "Flash", usedPercent: 20, resetAt: Date(timeIntervalSince1970: 1_800_000_000)),
         fetchedAt: Date(timeIntervalSince1970: 1_700_100_000)
@@ -1285,12 +1437,10 @@ func expandedProvidersPersistAcrossStoreInstances() {
     defaults.removePersistentDomain(forName: "QuotaCoreTests.expandedProviders")
 
     let firstStore = QuotaStore(defaults: defaults)
-    #expect(firstStore.isExpanded(.gemini))
-    firstStore.toggleExpanded(.gemini)
+    #expect(firstStore.isExpanded(.antigravity))
     firstStore.toggleExpanded(.antigravity)
 
     let secondStore = QuotaStore(defaults: defaults)
-    #expect(secondStore.isExpanded(.gemini) == false)
     #expect(secondStore.isExpanded(.antigravity) == false)
     #expect(secondStore.isExpanded(.codex))
     #expect(secondStore.isExpanded(.claude))

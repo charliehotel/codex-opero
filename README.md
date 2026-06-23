@@ -19,15 +19,16 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 ## Highlights
 
 - Shows the selected provider's remaining usage in a compact two-value format from the menu bar
-- Lets you choose between `Codex`, `Claude`, `Gemini`, and `Antigravity`
+- Lets you choose between `Codex`, `Claude`, and `Antigravity`
 - Remembers the last selected provider
 - Supports `Auto Rotate` to cycle through available providers at a configurable interval
 - Lets you choose the refresh interval from preset options in the menu
 - Lets you choose the auto-rotate interval from preset options in the menu
+- Shows the installed app version at the bottom of the menu and links to a new GitHub Release when available
 - Refreshes automatically at the configured interval and also supports `Refresh Now`
 - Shows each provider as soon as its usage lookup finishes, without waiting for slower providers
 - Sends reset notifications when important usage buckets return to 100%
-- Checks for new GitHub releases about once a week
+- Checks for new GitHub releases every 24 hours after the last successful check
 - Supports `Launch at Login` when running as a packaged `.app`
 - Falls back to `--/--` when usage lookup fails
 
@@ -38,23 +39,23 @@ Instead, it reuses existing local authentication state and only fetches usage.
 
 - `Codex`: uses `~/.codex/auth.json`
 - `Claude`: uses the macOS Keychain item `Claude Code-credentials` or `~/.claude/.credentials.json`
-- `Gemini`: uses the macOS Keychain item `gemini-cli-oauth` or `~/.gemini/oauth_creds.json`
 - `Antigravity` (agy): reads model quota only from a running Antigravity IDE local service; it requires an existing Antigravity login state
 
-That means Codex, Claude, Gemini, or Antigravity must already be logged in on the local machine.
+That means Codex, Claude, or Antigravity must already be logged in on the local machine.
 
-For `Gemini`, the two menu bar values currently map to representative `Pro / Flash` quota buckets rather than the same `5-hour / weekly` windows used by Codex and Claude.  
-When you open the menu, Gemini usage is shown in more detail by `Pro`, `Flash`, and `Flash Lite` model groups.
+Under [Google's official policy](https://docs.cloud.google.com/gemini/docs/codeassist/release-notes), Gemini CLI stopped serving requests for individual, Google AI Pro, and Google AI Ultra users on June 18, 2026, so the standalone Gemini provider has been removed. Individual users can view Gemini model quota through Antigravity.
 
-For `Antigravity`, the two menu bar values show the remaining 5-hour quota for its two shared model groups:
+For `Antigravity`, the two menu bar values normally show the remaining 5-hour quota for its two shared model groups. If a group's weekly quota is exhausted, that group displays `0%` even when 5-hour quota remains:
 
 - `Gemini Models`: Gemini Flash and Gemini Pro variants
 - `Claude and GPT models`: Claude Opus/Sonnet and GPT-OSS variants
 
 Open the provider details to see compact `[5h]` and `[7d]` rows for each group, with the five-hour limit first. `codex-opero` reads Antigravity's local `RetrieveUserQuotaSummary` service, the same source used by the current Model Quota screen, and retains the older per-model endpoint as a compatibility fallback. For safety, it does not automatically launch `agy` in the background: repeated CLI launches can initiate authentication flows and create IDE workspace entries. Keep the Antigravity app running when reading its quota; if the local service is unavailable, the app displays an explicit availability message instead of launching `agy` or showing stale cache values.
 
-If you use `Claude` or `Gemini`, macOS may ask for your password when the app first tries to read the Keychain credentials.  
-Note that this prompt **only appears if you actually use that AI tool and its keychain item exists**. If you do not use Claude or Gemini, no popups for those credentials will appear at all.
+The `[5h]` reset uses the macOS time format and shows the exact time to the minute, such as `resets at 2:18 PM`. Other windows, including `[7d]`, retain the compact relative-time format.
+
+If you use `Claude`, macOS may ask for your password when the app first tries to read the Keychain credentials.
+This prompt **only appears if you use Claude and its keychain item exists**. If you do not use Claude, no credential prompt appears.
 
 Because `codex-opero` refreshes on a recurring interval, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose **`Always Allow`** for `codex-opero` when macOS asks for access to the keychain credential.
@@ -70,13 +71,13 @@ When this dialog appears, select **`Always Allow`** so `codex-opero` can refresh
 `codex-opero` can send macOS notifications when usage becomes available again.
 
 - `Codex` and `Claude`: notifies when the `5h` or `7d` remaining usage returns to `100%`
-- `Gemini`: notifies when the representative `Pro` or `Flash` usage bucket returns to `100%`
+- `Antigravity`: notifies when the available usage for the `Gemini Models` or `Claude and GPT models` group returns to `100%`
 
 Each bucket is notified only once while it stays at `100%`.  
 It can notify again after usage drops below `100%` and later returns to `100%`.
 
-The app checks GitHub Releases about once a week from the last successful check. If the Mac or app was off when the interval elapsed, it checks immediately on the next launch.
-If a newer version is available, it asks whether you want to open the release page in your browser.
+The app checks GitHub Releases every 24 hours after the last successful check. If the Mac or app was off when the interval elapsed, it checks immediately on the next launch.
+When a newer version is available, the footer changes to a softly pulsing link such as `v0.2.1 → v0.2.2`. Clicking it opens that GitHub Release page. With Reduce Motion enabled in macOS, the link remains static.
 
 ## Auto Rotate
 
@@ -85,7 +86,6 @@ When enabled, `codex-opero` rotates through available providers in this order:
 
 - `Codex`
 - `Claude`
-- `Gemini`
 - `Antigravity`
 
 You can choose the refresh interval from preset options such as `1 min`, `3 min`, `5 min`, and `15 min`.  
@@ -132,9 +132,22 @@ cd codex-opero
 swift run codex-opero
 ```
 
-Requires macOS and an existing Codex, Claude, Gemini, or Antigravity login on the local machine.
+Requires macOS and an existing Codex, Claude, or Antigravity login on the local machine.
 
 ## Release Notes
+
+<details>
+  <summary>v0.2.1</summary>
+  <ul>
+    <li>Normally show each Antigravity model group's 5-hour remaining quota, but display <code>0%</code> when that group's weekly quota is exhausted.</li>
+    <li>Show each <code>[5h]</code> reset as an exact hour and minute using the macOS time format.</li>
+    <li>Show the current app version at the bottom of the menu.</li>
+    <li>Turn the footer version into a soft pulse link when a new version is available, opening the matching GitHub Release when clicked.</li>
+    <li>Replace the weekly update prompt with a non-blocking check every 24 hours after the last successful check.</li>
+    <li>Remove the standalone Gemini provider following the June 18, 2026 end of Gemini CLI service for individual users.</li>
+    <li>Automatically migrate an existing Gemini selection to Antigravity.</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.2.0</summary>

@@ -1,9 +1,22 @@
 import Foundation
 
 public enum QuotaFormatter {
-    public static func resetString(for window: QuotaWindow) -> String {
+    public static func resetString(
+        for window: QuotaWindow,
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> String {
         guard let resetAt = window.resetAt else {
             return "reset unknown"
+        }
+
+        if window.name == "5h" {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.timeZone = timeZone
+            formatter.dateStyle = .none
+            formatter.timeStyle = .short
+            return "resets at \(formatter.string(from: resetAt))"
         }
 
         let seconds = max(0, Int(resetAt.timeIntervalSinceNow.rounded()))

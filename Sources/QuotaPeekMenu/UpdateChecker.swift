@@ -1,22 +1,42 @@
-import AppKit
 import Foundation
+import Observation
 import QuotaCore
 
+@Observable
 @MainActor
 final class UpdateChecker {
     static let shared = UpdateChecker()
 
     private static let lastCheckedAtKey = "updateCheck.lastCheckedAt"
-    private static let lastPromptedVersionKey = "updateCheck.lastPromptedVersion"
-    private static let lastPromptedAtKey = "updateCheck.lastPromptedAt"
+    private static let availableVersionKey = "updateCheck.availableVersion"
+    private static let availableReleaseURLKey = "updateCheck.availableReleaseURL"
 
     private let defaults: UserDefaults
     private let apiURL = URL(string: "https://api.github.com/repos/charliehotel/codex-opero/releases/latest")!
     private let releasesURL = URL(string: "https://github.com/charliehotel/codex-opero/releases")!
     private var checkTask: Task<Void, Never>?
+    let currentVersion: AppVersion?
+    private(set) var availableUpdate: AvailableUpdate?
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        currentVersion: AppVersion? = CurrentVersionReader.currentVersion()
+    ) {
         self.defaults = defaults
+        self.currentVersion = currentVersion
+        if let currentVersion {
+            self.availableUpdate = UpdateCheckPolicy.restoredUpdate(
+                currentVersion: currentVersion,
+                cachedVersion: defaults.string(forKey: Self.availableVersionKey),
+                cachedReleaseURL: defaults.string(forKey: Self.availableReleaseURLKey)
+            )
+        } else {
+            self.availableUpdate = nil
+        }
+
+        if availableUpdate == nil {
+            clearCachedUpdate()
+        }
     }
 
     func start() {
@@ -55,32 +75,31 @@ final class UpdateChecker {
             let release = try await fetchLatestRelease()
             defaults.set(now, forKey: Self.lastCheckedAtKey)
 
-            guard let currentVersion = CurrentVersionReader.currentVersion(),
-                  let latestVersion = UpdateCheckPolicy.newerVersion(
+            guard let currentVersion else {
+                return UpdateCheckPolicy.checkInterval
+            }
+
+            if let update = UpdateCheckPolicy.availableUpdate(
                     latestRelease: release.versionInfo,
-                    currentVersion: currentVersion
-                  ) else {
-                return UpdateCheckPolicy.checkInterval
+                    currentVersion: currentVersion,
+                    fallbackURL: releasesURL
+            ) {
+                availableUpdate = update
+                defaults.set(update.latestVersion.description, forKey: Self.availableVersionKey)
+                defaults.set(update.releaseURL.absoluteString, forKey: Self.availableReleaseURLKey)
+            } else {
+                availableUpdate = nil
+                clearCachedUpdate()
             }
-
-            guard shouldPrompt(version: latestVersion.description, now: now) else {
-                return UpdateCheckPolicy.checkInterval
-            }
-
-            showUpdatePrompt(version: latestVersion.description, now: now)
             return UpdateCheckPolicy.checkInterval
         } catch {
             return UpdateCheckPolicy.retryInterval
         }
     }
 
-    private func shouldPrompt(version: String, now: Date) -> Bool {
-        UpdateCheckPolicy.shouldPrompt(
-            version: version,
-            now: now,
-            lastPromptedVersion: defaults.string(forKey: Self.lastPromptedVersionKey),
-            lastPromptedAt: defaults.object(forKey: Self.lastPromptedAtKey) as? Date
-        )
+    private func clearCachedUpdate() {
+        defaults.removeObject(forKey: Self.availableVersionKey)
+        defaults.removeObject(forKey: Self.availableReleaseURLKey)
     }
 
     private func fetchLatestRelease() async throws -> LatestRelease {
@@ -94,36 +113,28 @@ final class UpdateChecker {
         return try JSONDecoder().decode(LatestRelease.self, from: data)
     }
 
-    @MainActor
-    private func showUpdatePrompt(version: String, now: Date) {
-        defaults.set(version, forKey: Self.lastPromptedVersionKey)
-        defaults.set(now, forKey: Self.lastPromptedAtKey)
-
-        let alert = NSAlert()
-        alert.messageText = "codex-opero \(version) is available"
-        alert.informativeText = "Open GitHub Releases to download the latest version?"
-        alert.addButton(withTitle: "Yes")
-        alert.addButton(withTitle: "No")
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(releasesURL)
-        }
-    }
 }
 
 private struct LatestRelease: Decodable {
     let tagName: String
     let prerelease: Bool
     let draft: Bool
+    let htmlURL: URL?
 
     enum CodingKeys: String, CodingKey {
         case tagName = "tag_name"
         case prerelease
         case draft
+        case htmlURL = "html_url"
     }
 
     var versionInfo: ReleaseVersionInfo {
-        ReleaseVersionInfo(tagName: tagName, prerelease: prerelease, draft: draft)
+        ReleaseVersionInfo(
+            tagName: tagName,
+            prerelease: prerelease,
+            draft: draft,
+            releaseURL: htmlURL
+        )
     }
 }
 
@@ -131,7 +142,7 @@ private enum UpdateCheckError: Error {
     case badResponse
 }
 
-private enum CurrentVersionReader {
+enum CurrentVersionReader {
     static func currentVersion() -> AppVersion? {
         if let bundleVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
            let version = AppVersion(bundleVersion) {

@@ -55,7 +55,7 @@ public final class QuotaStore {
     static let expandedProvidersDefaultsKey = "expandedProviderIDs"
 
     public init(
-        providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), GeminiProvider(), AntigravityProvider()],
+        providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), AntigravityProvider()],
         selectedProviderID: ProviderID = .codex,
         refreshIntervalSeconds: Int = 60,
         autoRotateIntervalSeconds: Int = 30,
@@ -66,8 +66,12 @@ public final class QuotaStore {
         self.defaults = defaults
         self.quotaResetDetector = QuotaResetDetector(defaults: defaults)
         self.onQuotaReset = onQuotaReset
-        if let persisted = defaults.string(forKey: Self.selectedProviderDefaultsKey),
-           let providerID = ProviderID(rawValue: persisted) {
+        let persisted = defaults.string(forKey: Self.selectedProviderDefaultsKey)
+        if persisted == "gemini", providers.contains(where: { $0.providerID == .antigravity }) {
+            self.selectedProviderID = .antigravity
+        } else if let persisted,
+                  let providerID = ProviderID(rawValue: persisted),
+                  providers.contains(where: { $0.providerID == providerID }) {
             self.selectedProviderID = providerID
         } else {
             self.selectedProviderID = selectedProviderID

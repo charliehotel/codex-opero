@@ -4,11 +4,18 @@ public struct ReleaseVersionInfo: Equatable, Sendable {
     public let tagName: String
     public let prerelease: Bool
     public let draft: Bool
+    public let releaseURL: URL?
 
-    public init(tagName: String, prerelease: Bool, draft: Bool) {
+    public init(
+        tagName: String,
+        prerelease: Bool,
+        draft: Bool,
+        releaseURL: URL? = nil
+    ) {
         self.tagName = tagName
         self.prerelease = prerelease
         self.draft = draft
+        self.releaseURL = releaseURL
     }
 }
 
@@ -23,7 +30,7 @@ public enum ReleaseRequestFactory {
 }
 
 public enum UpdateCheckPolicy {
-    public static let checkInterval: TimeInterval = 7 * 24 * 60 * 60
+    public static let checkInterval: TimeInterval = 24 * 60 * 60
     public static let retryInterval: TimeInterval = 60 * 60
 
     public static func shouldCheck(now: Date, lastCheckedAt: Date?) -> Bool {
@@ -31,19 +38,6 @@ public enum UpdateCheckPolicy {
             return true
         }
         return now.timeIntervalSince(lastCheckedAt) >= checkInterval
-    }
-
-    public static func shouldPrompt(
-        version: String,
-        now: Date,
-        lastPromptedVersion: String?,
-        lastPromptedAt: Date?
-    ) -> Bool {
-        guard lastPromptedVersion == version,
-              let lastPromptedAt else {
-            return true
-        }
-        return now.timeIntervalSince(lastPromptedAt) >= checkInterval
     }
 
     public static func nextCheckDelay(now: Date, lastCheckedAt: Date?) -> TimeInterval {
@@ -65,5 +59,52 @@ public enum UpdateCheckPolicy {
             return nil
         }
         return latestVersion
+    }
+
+    public static func restoredUpdate(
+        currentVersion: AppVersion,
+        cachedVersion: String?,
+        cachedReleaseURL: String?
+    ) -> AvailableUpdate? {
+        guard let cachedVersion,
+              let latestVersion = AppVersion(cachedVersion),
+              latestVersion > currentVersion,
+              let cachedReleaseURL,
+              let releaseURL = URL(string: cachedReleaseURL),
+              isWebURL(releaseURL) else {
+            return nil
+        }
+        return AvailableUpdate(
+            currentVersion: currentVersion,
+            latestVersion: latestVersion,
+            releaseURL: releaseURL
+        )
+    }
+
+    public static func availableUpdate(
+        latestRelease: ReleaseVersionInfo,
+        currentVersion: AppVersion,
+        fallbackURL: URL
+    ) -> AvailableUpdate? {
+        guard let latestVersion = newerVersion(
+            latestRelease: latestRelease,
+            currentVersion: currentVersion
+        ) else {
+            return nil
+        }
+        let releaseURL = latestRelease.releaseURL.flatMap { isWebURL($0) ? $0 : nil }
+            ?? fallbackURL
+        return AvailableUpdate(
+            currentVersion: currentVersion,
+            latestVersion: latestVersion,
+            releaseURL: releaseURL
+        )
+    }
+
+    private static func isWebURL(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased() else {
+            return false
+        }
+        return scheme == "http" || scheme == "https"
     }
 }

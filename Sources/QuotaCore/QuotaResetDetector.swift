@@ -116,7 +116,7 @@ private extension ProviderQuota {
                 notifiableWindow(primary, expectedName: "5h", kind: .shortWindow),
                 notifiableWindow(secondary, expectedName: "7d", kind: .weeklyWindow),
             ].compactMap { $0 }
-        case .gemini, .antigravity:
+        case .antigravity:
             return [
                 NotifiableResetWindow(window: primary, kind: .modelBucket),
                 NotifiableResetWindow(window: secondary, kind: .modelBucket),

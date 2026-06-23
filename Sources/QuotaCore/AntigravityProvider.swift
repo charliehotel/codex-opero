@@ -523,12 +523,8 @@ public struct AntigravityProvider: UsageProvider {
                 }
             )
         }
-        guard
-            let primaryID = snapshot.groups[0].buckets.first(where: { $0.window == "5h" })?.bucketID,
-            let secondaryID = snapshot.groups[1].buckets.first(where: { $0.window == "5h" })?.bucketID,
-            let primary = groups[0].windows.first(where: { $0.id == primaryID }),
-            let secondary = groups[1].windows.first(where: { $0.id == secondaryID })
-        else {
+        guard let primary = summaryWindow(from: groups[0]),
+              let secondary = summaryWindow(from: groups[1]) else {
             return nil
         }
         return ProviderQuota(
@@ -537,6 +533,22 @@ public struct AntigravityProvider: UsageProvider {
             secondary: secondary,
             fetchedAt: Date(),
             detailGroups: groups
+        )
+    }
+
+    private func summaryWindow(from group: QuotaDetailGroup) -> QuotaWindow? {
+        guard let fiveHour = group.windows.first(where: { $0.name == "5h" }) else {
+            return nil
+        }
+        guard let weekly = group.windows.first(where: { $0.name == "7d" }),
+              weekly.remainingPercent == 0 else {
+            return fiveHour
+        }
+        return QuotaWindow(
+            id: fiveHour.id,
+            name: fiveHour.name,
+            usedPercent: 100,
+            resetAt: weekly.resetAt
         )
     }
 
