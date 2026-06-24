@@ -7,8 +7,8 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 
 <table width="100%">
   <tr>
-    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.9_toggle.gif" alt="codex-opero collapsible provider sections" width="100%" /></td>
-    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.9_main.png" alt="codex-opero menu" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.2.2_main.gif" alt="codex-opero menu interaction" width="100%" /></td>
+    <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.2.2_main.png" alt="codex-opero menu" width="100%" /></td>
   </tr>
   <tr>
     <td width="50%" valign="top"><img src="./Screenshots/Screenshot_v0.1.4.png" alt="codex-opero first-run popup" width="100%" /></td>
