@@ -137,73 +137,14 @@ private struct ContentView: View {
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Refresh")
-                    Spacer()
-                    Picker("Refresh", selection: $store.refreshIntervalSeconds) {
-                        ForEach(QuotaStore.refreshIntervalOptions, id: \.self) { seconds in
-                            Text(QuotaStore.label(forRefreshIntervalSeconds: seconds)).tag(seconds)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 110)
-                }
-
-                Toggle("Auto Rotate", isOn: $store.autoRotateEnabled)
-
-                if store.autoRotateEnabled {
-                    Picker("Rotate Interval", selection: $store.autoRotateIntervalSeconds) {
-                        ForEach(QuotaStore.autoRotateIntervalOptions, id: \.self) { seconds in
-                            Text(QuotaStore.label(forAutoRotateIntervalSeconds: seconds)).tag(seconds)
-                        }
-                    }
-                    .pickerStyle(.radioGroup)
-                }
-            }
+            MenuSettingsView(
+                store: store,
+                loginItemManager: loginItemManager
+            )
 
             Divider()
 
-            Toggle(isOn: Binding(
-                get: { loginItemManager.isEnabled },
-                set: { loginItemManager.setEnabled($0) }
-            )) {
-                Text("Launch at Login")
-            }
-            .disabled(loginItemManager.isAvailable == false)
-
-            if let errorMessage = loginItemManager.errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Divider()
-
-            HStack {
-                Button("Refresh Now") {
-                    Task { await store.refresh() }
-                }
-                Spacer()
-                if let lastRefresh = store.lastRefresh {
-                    Text(QuotaFormatter.timestampString(lastRefresh))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Divider()
-
-            HStack {
-                Button("Quit") {
-                    NSApplication.shared.terminate(nil)
-                }
-                Spacer()
-                UpdateStatusView(
-                    currentVersion: updateChecker.currentVersion,
-                    availableUpdate: updateChecker.availableUpdate
-                )
-            }
+            footerGroup
         }
         .padding(14)
         .frame(width: 320)
@@ -215,6 +156,19 @@ private struct ContentView: View {
         }
         .onDisappear {
             store.setMenuPresented(false)
+        }
+    }
+
+    private var footerGroup: some View {
+        HStack {
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
+            Spacer()
+            UpdateStatusView(
+                currentVersion: updateChecker.currentVersion,
+                availableUpdate: updateChecker.availableUpdate
+            )
         }
     }
 }

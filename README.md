@@ -137,6 +137,18 @@ Requires macOS and an existing Codex, Claude, or Antigravity login on the local 
 ## Release Notes
 
 <details>
+  <summary>v0.2.2</summary>
+  <ul>
+    <li>Rework the lower settings area into compact native action rows for Refresh and Rotate.</li>
+    <li>Make the Refresh button run an immediate refresh while showing the last update time and refresh interval in the same row.</li>
+    <li>Make the Rotate button toggle auto rotate while showing the current <code>On</code> or <code>Off</code> state inline.</li>
+    <li>Disable the rotate interval picker while auto rotate is off.</li>
+    <li>Use a native macOS switch for Launch at Login.</li>
+    <li>Remove the duplicated Refresh Now footer row, leaving Quit and the version/update indicator at the bottom.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.1</summary>
   <ul>
     <li>Normally show each Antigravity model group's 5-hour remaining quota, but display <code>0%</code> when that group's weekly quota is exhausted.</li>
