@@ -33,6 +33,11 @@ public final class QuotaStore {
             restartRotateTaskIfNeeded()
         }
     }
+    public var metricDisplayMode: QuotaMetricDisplayMode {
+        didSet {
+            defaults.set(metricDisplayMode.rawValue, forKey: Self.metricDisplayModeDefaultsKey)
+        }
+    }
     public var expandedProviderIDs: Set<ProviderID> {
         didSet {
             let array = Array(expandedProviderIDs).map { $0.rawValue }
@@ -53,12 +58,14 @@ public final class QuotaStore {
     static let refreshIntervalDefaultsKey = "refreshIntervalSeconds"
     static let autoRotateIntervalDefaultsKey = "autoRotateIntervalSeconds"
     static let expandedProvidersDefaultsKey = "expandedProviderIDs"
+    static let metricDisplayModeDefaultsKey = "metricDisplayMode"
 
     public init(
         providers: [any UsageProvider] = [CodexProvider(), ClaudeProvider(), AntigravityProvider()],
         selectedProviderID: ProviderID = .codex,
         refreshIntervalSeconds: Int = 60,
         autoRotateIntervalSeconds: Int = 30,
+        metricDisplayMode: QuotaMetricDisplayMode = .remaining,
         defaults: UserDefaults = .standard,
         onQuotaReset: (@MainActor (QuotaResetEvent) async -> Bool)? = nil
     ) {
@@ -88,6 +95,12 @@ public final class QuotaStore {
             self.autoRotateIntervalSeconds = persistedRotate
         } else {
             self.autoRotateIntervalSeconds = autoRotateIntervalSeconds
+        }
+        if let persistedMetricDisplayMode = defaults.string(forKey: Self.metricDisplayModeDefaultsKey),
+           let displayMode = QuotaMetricDisplayMode(rawValue: persistedMetricDisplayMode) {
+            self.metricDisplayMode = displayMode
+        } else {
+            self.metricDisplayMode = metricDisplayMode
         }
         
         if let persistedExpanded = defaults.stringArray(forKey: Self.expandedProvidersDefaultsKey) {

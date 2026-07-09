@@ -30,7 +30,7 @@ struct QuotaPeekMenuApp: App {
         } label: {
             ProviderTrayLabel(
                 providerID: store.selectedProviderID,
-                title: store.selectedSnapshot.menuTitle
+                title: store.selectedSnapshot.compactTitle(displayMode: store.metricDisplayMode)
             )
         }
         .menuBarExtraStyle(.window)
@@ -58,7 +58,7 @@ private struct ContentView: View {
             Text(store.selectedProviderID.displayName)
                 .font(.headline)
 
-            Text(store.selectedSnapshot.menuTitle)
+            Text(store.selectedSnapshot.compactTitle(displayMode: store.metricDisplayMode))
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
                 .monospacedDigit()
 
@@ -83,7 +83,7 @@ private struct ContentView: View {
                             Text(snapshot.providerID.displayName)
                                 .foregroundStyle(snapshot.providerID == store.selectedProviderID ? Color.blue : Color.primary)
                             Spacer()
-                            Text(snapshot.menuTitle)
+                            Text(snapshot.compactTitle(displayMode: store.metricDisplayMode))
                                 .monospacedDigit()
                                 .foregroundStyle(snapshot.providerID == store.selectedProviderID ? Color.blue : Color.primary)
                         }

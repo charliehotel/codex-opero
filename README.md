@@ -20,6 +20,7 @@ Instead of a full dashboard, it focuses on one thing: letting you check the numb
 
 - Shows the selected provider's remaining usage in a compact two-value format from the menu bar
 - Lets you choose between `Codex`, `Claude`, and `Antigravity`
+- Lets you switch the compact menu bar and provider-row numbers between remaining quota and used quota
 - Remembers the last selected provider
 - Supports `Auto Rotate` to cycle through available providers at a configurable interval
 - Lets you choose the refresh interval from preset options in the menu
@@ -135,6 +136,16 @@ swift run codex-opero
 Requires macOS and an existing Codex, Claude, or Antigravity login on the local machine.
 
 ## Release Notes
+
+<details>
+  <summary>v0.2.3</summary>
+  <ul>
+    <li>Add a Display switch for compact quota numbers.</li>
+    <li>By default, the menu bar, selected provider summary, and provider-row numbers keep showing remaining quota.</li>
+    <li>When Display is switched to Usage, those compact numbers show used quota instead.</li>
+    <li>Expanded detail rows remain unchanged because they already show explicit <code>N% used</code> labels.</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.2.2</summary>

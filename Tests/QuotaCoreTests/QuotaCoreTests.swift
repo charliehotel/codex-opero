@@ -258,6 +258,36 @@ func loadedSnapshotUsesCompactMenuTitle() {
     #expect(snapshot.menuTitle == "84%/94%")
 }
 
+@Test
+func loadedSnapshotUsesCompactMenuTitleForSelectedDisplayMode() {
+    let quota = ProviderQuota(
+        providerID: .codex,
+        primary: QuotaWindow(name: "5h", usedPercent: 16, resetAt: nil),
+        secondary: QuotaWindow(name: "7d", usedPercent: 6, resetAt: nil),
+        fetchedAt: Date()
+    )
+
+    let snapshot = ProviderSnapshot(providerID: .codex, status: .loaded(quota))
+
+    #expect(snapshot.compactTitle(displayMode: .remaining) == "84%/94%")
+    #expect(snapshot.compactTitle(displayMode: .usage) == "16%/6%")
+}
+
+@Test
+func loadingSnapshotUsesPreviousQuotaForSelectedDisplayMode() {
+    let previousQuota = ProviderQuota(
+        providerID: .codex,
+        primary: QuotaWindow(name: "5h", usedPercent: 39, resetAt: nil),
+        secondary: QuotaWindow(name: "7d", usedPercent: 90, resetAt: nil),
+        fetchedAt: Date()
+    )
+
+    let snapshot = ProviderSnapshot(providerID: .codex, status: .loading(previousQuota))
+
+    #expect(snapshot.compactTitle(displayMode: .remaining) == "61%/10%")
+    #expect(snapshot.compactTitle(displayMode: .usage) == "39%/90%")
+}
+
 @MainActor
 @Test
 func defaultProvidersExcludeRetiredGemini() {
@@ -1470,6 +1500,21 @@ func autoRotateIntervalPersistsAcrossStoreInstances() {
 
     let secondStore = QuotaStore(defaults: defaults)
     #expect(secondStore.autoRotateIntervalSeconds == 60)
+}
+
+@MainActor
+@Test
+func metricDisplayModePersistsAcrossStoreInstances() {
+    let suiteName = "QuotaCoreTests.metricDisplayMode"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let firstStore = QuotaStore(defaults: defaults)
+    #expect(firstStore.metricDisplayMode == .remaining)
+    firstStore.metricDisplayMode = .usage
+
+    let secondStore = QuotaStore(defaults: defaults)
+    #expect(secondStore.metricDisplayMode == .usage)
 }
 
 private final class AntigravityURLProtocolStub: URLProtocol {

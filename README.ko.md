@@ -20,6 +20,7 @@
 
 - 메뉴 막대에 선택된 provider의 남은 사용량을 두 칸 숫자 형식으로 간단히 표시합니다
 - `Codex`, `Claude`, `Antigravity` 중 하나를 선택해서 메뉴 막대에 띄울 수 있습니다
+- 메뉴 막대와 provider 행의 compact 숫자를 잔여량 또는 사용량으로 전환할 수 있습니다
 - 마지막으로 선택한 provider를 기억합니다
 - `Auto Rotate`를 켜면 사용 가능한 provider를 설정한 간격으로 자동 순환합니다
 - 메뉴에서 refresh 간격을 프리셋으로 선택할 수 있습니다
@@ -134,6 +135,16 @@ swift run codex-opero
 macOS 환경과 로컬의 기존 Codex, Claude 또는 Antigravity 로그인 상태가 필요합니다.
 
 ## 릴리즈 노트
+
+<details>
+  <summary>v0.2.3</summary>
+  <ul>
+    <li>Compact quota 숫자를 바꾸는 Display 스위치를 추가</li>
+    <li>기본값은 기존처럼 메뉴 막대, 선택 provider 요약, provider 행 숫자에 잔여량을 표시</li>
+    <li>Display를 Usage로 바꾸면 해당 compact 숫자들이 사용량으로 표시</li>
+    <li>펼친 상세 행은 이미 <code>N% used</code>라고 명시되어 있으므로 그대로 유지</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.2.2</summary>

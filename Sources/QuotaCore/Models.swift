@@ -35,6 +35,20 @@ public struct QuotaWindow: Codable, Equatable, Sendable {
     public var remainingPercent: Int {
         max(0, min(100, 100 - usedPercent))
     }
+
+    public func percent(for displayMode: QuotaMetricDisplayMode) -> Int {
+        switch displayMode {
+        case .remaining:
+            return remainingPercent
+        case .usage:
+            return usedPercent
+        }
+    }
+}
+
+public enum QuotaMetricDisplayMode: String, Codable, CaseIterable, Sendable {
+    case remaining
+    case usage
 }
 
 public struct QuotaDetailGroup: Equatable, Sendable {
@@ -90,12 +104,16 @@ public struct ProviderSnapshot: Equatable, Identifiable, Sendable {
     public var id: String { providerID.rawValue }
 
     public var menuTitle: String {
+        compactTitle(displayMode: .remaining)
+    }
+
+    public func compactTitle(displayMode: QuotaMetricDisplayMode) -> String {
         switch status {
         case .loaded(let quota):
-            return "\(quota.primary.remainingPercent)%/\(quota.secondary.remainingPercent)%"
+            return "\(quota.primary.percent(for: displayMode))%/\(quota.secondary.percent(for: displayMode))%"
         case .loading(let previousQuota):
             if let previousQuota {
-                return "\(previousQuota.primary.remainingPercent)%/\(previousQuota.secondary.remainingPercent)%"
+                return "\(previousQuota.primary.percent(for: displayMode))%/\(previousQuota.secondary.percent(for: displayMode))%"
             }
             return "--/--"
         case .idle:

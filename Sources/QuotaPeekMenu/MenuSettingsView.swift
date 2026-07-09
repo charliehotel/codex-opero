@@ -10,6 +10,7 @@ struct MenuSettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             refreshRow
             rotateRow
+            displayModeRow
 
             HStack {
                 settingsLabel("Launch at Login")
@@ -32,6 +33,29 @@ struct MenuSettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private var displayModeRow: some View {
+        HStack {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                settingsLabel("Display")
+                statusText(displayModeStatusLabel, color: .secondaryLabelColor)
+            }
+
+            Spacer()
+
+            Toggle(isOn: Binding(
+                get: { store.metricDisplayMode == .usage },
+                set: { store.metricDisplayMode = $0 ? .usage : .remaining }
+            )) {
+                Text("Show Usage")
+            }
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .help("Toggle compact numbers between remaining quota and used quota")
+            .accessibilityLabel("Show Usage")
         }
     }
 
@@ -92,6 +116,15 @@ struct MenuSettingsView: View {
 
     private var rotateStatusColor: NSColor {
         store.autoRotateEnabled ? .systemGreen : .secondaryLabelColor
+    }
+
+    private var displayModeStatusLabel: String {
+        switch store.metricDisplayMode {
+        case .remaining:
+            return "Remaining"
+        case .usage:
+            return "Usage"
+        }
     }
 
     private var refreshIntervalPicker: some View {
