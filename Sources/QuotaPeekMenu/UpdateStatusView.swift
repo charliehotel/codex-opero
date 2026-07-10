@@ -18,7 +18,13 @@ struct UpdateStatusView: View {
                     .font(.caption.weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(Color.accentColor)
-                    .opacity(reduceMotion ? 1 : (isDimmed ? 0.45 : 1))
+                    .opacity(isDimmed ? 0.45 : 1)
+                    .animation(
+                        reduceMotion
+                            ? nil
+                            : .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                        value: isDimmed
+                    )
             }
             .buttonStyle(.plain)
             .accessibilityLabel(
@@ -40,15 +46,6 @@ struct UpdateStatusView: View {
     }
 
     private func updateAnimation() {
-        if reduceMotion {
-            withAnimation(nil) {
-                isDimmed = false
-            }
-        } else {
-            isDimmed = false
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                isDimmed = true
-            }
-        }
+        isDimmed = reduceMotion == false
     }
 }

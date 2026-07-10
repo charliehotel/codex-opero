@@ -138,6 +138,15 @@ Requires macOS and an existing Codex, Claude, or Antigravity login on the local 
 ## Release Notes
 
 <details>
+  <summary>v0.2.4</summary>
+  <ul>
+    <li>Fix the update indicator so only the blue footer link pulses when a new version is available.</li>
+    <li>Keep the menu panel stationary and clickable while the update link pulses.</li>
+    <li>Continue to keep the link static when macOS Reduce Motion is enabled.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.3</summary>
   <ul>
     <li>Add a Display switch for compact quota numbers.</li>
