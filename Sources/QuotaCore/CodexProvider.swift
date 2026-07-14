@@ -38,10 +38,16 @@ public struct CodexProvider: UsageProvider {
                 usedPercent: payload.rateLimit.primaryWindow.usedPercent,
                 resetAt: Date(timeIntervalSince1970: TimeInterval(payload.rateLimit.primaryWindow.resetAt))
             ),
-            secondary: QuotaWindow(
+            secondary: payload.rateLimit.secondaryWindow.map { w in
+                QuotaWindow(
+                    name: "7d",
+                    usedPercent: w.usedPercent,
+                    resetAt: Date(timeIntervalSince1970: TimeInterval(w.resetAt))
+                )
+            } ?? QuotaWindow(
                 name: "7d",
-                usedPercent: payload.rateLimit.secondaryWindow.usedPercent,
-                resetAt: Date(timeIntervalSince1970: TimeInterval(payload.rateLimit.secondaryWindow.resetAt))
+                usedPercent: 0,
+                resetAt: Date(timeIntervalSince1970: TimeInterval(payload.rateLimit.primaryWindow.resetAt))
             ),
             fetchedAt: Date()
         )
@@ -73,7 +79,7 @@ private struct CodexUsagePayload: Decodable {
 
     struct RateLimit: Decodable {
         let primaryWindow: Window
-        let secondaryWindow: Window
+        let secondaryWindow: Window?
 
         enum CodingKeys: String, CodingKey {
             case primaryWindow = "primary_window"
