@@ -31,18 +31,59 @@ public struct CodexProvider: UsageProvider {
         }
 
         let payload = try JSONDecoder.codexDecoder.decode(CodexUsagePayload.self, from: data)
+        
+        let rateLimit = payload.rateLimit
+        var fiveHourWindow = QuotaWindow(name: "5h", usedPercent: nil, resetAt: nil)
+        var sevenDayWindow = QuotaWindow(name: "7d", usedPercent: nil, resetAt: nil)
+        
+        func makeQuotaWindow(from window: CodexUsagePayload.Window, defaultName: String) -> QuotaWindow {
+            let name: String
+            if let seconds = window.limitWindowSeconds {
+                if seconds == 18000 {
+                    name = "5h"
+                } else if seconds == 604800 {
+                    name = "7d"
+                } else {
+                    let hours = seconds / 3600
+                    if hours >= 24 {
+                        name = "\(hours / 24)d"
+                    } else {
+                        name = "\(hours)h"
+                    }
+                }
+            } else {
+                name = defaultName
+            }
+            return QuotaWindow(
+                name: name,
+                usedPercent: window.usedPercent,
+                resetAt: Date(timeIntervalSince1970: TimeInterval(window.resetAt))
+            )
+        }
+        
+        if let primary = rateLimit.primaryWindow, let secondary = rateLimit.secondaryWindow {
+            fiveHourWindow = makeQuotaWindow(from: primary, defaultName: "5h")
+            sevenDayWindow = makeQuotaWindow(from: secondary, defaultName: "7d")
+        } else if let primary = rateLimit.primaryWindow {
+            let qw = makeQuotaWindow(from: primary, defaultName: "5h")
+            if qw.name == "7d" {
+                sevenDayWindow = qw
+            } else {
+                fiveHourWindow = qw
+            }
+        } else if let secondary = rateLimit.secondaryWindow {
+            let qw = makeQuotaWindow(from: secondary, defaultName: "7d")
+            if qw.name == "5h" {
+                fiveHourWindow = qw
+            } else {
+                sevenDayWindow = qw
+            }
+        }
+        
         return ProviderQuota(
             providerID: providerID,
-            primary: QuotaWindow(
-                name: "5h",
-                usedPercent: payload.rateLimit.primaryWindow.usedPercent,
-                resetAt: Date(timeIntervalSince1970: TimeInterval(payload.rateLimit.primaryWindow.resetAt))
-            ),
-            secondary: QuotaWindow(
-                name: "7d",
-                usedPercent: payload.rateLimit.secondaryWindow.usedPercent,
-                resetAt: Date(timeIntervalSince1970: TimeInterval(payload.rateLimit.secondaryWindow.resetAt))
-            ),
+            primary: fiveHourWindow,
+            secondary: sevenDayWindow,
             fetchedAt: Date()
         )
     }
@@ -72,8 +113,8 @@ private struct CodexUsagePayload: Decodable {
     let rateLimit: RateLimit
 
     struct RateLimit: Decodable {
-        let primaryWindow: Window
-        let secondaryWindow: Window
+        let primaryWindow: Window?
+        let secondaryWindow: Window?
 
         enum CodingKeys: String, CodingKey {
             case primaryWindow = "primary_window"
@@ -84,10 +125,12 @@ private struct CodexUsagePayload: Decodable {
     struct Window: Decodable {
         let usedPercent: Int
         let resetAt: Int
+        let limitWindowSeconds: Int?
 
         enum CodingKeys: String, CodingKey {
             case usedPercent = "used_percent"
             case resetAt = "reset_at"
+            case limitWindowSeconds = "limit_window_seconds"
         }
     }
 

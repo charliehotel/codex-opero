@@ -138,6 +138,14 @@ Requires macOS and an existing Codex, Claude, or Antigravity login on the local 
 ## Release Notes
 
 <details>
+  <summary>v0.2.5</summary>
+  <ul>
+    <li>Fix usage fetching decoding errors caused by Codex's integration into the ChatGPT desktop app.</li>
+    <li>Gracefully handle missing 5h quota by displaying <code>--</code>, ensuring it automatically syncs and reappears once reinstated.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.4</summary>
   <ul>
     <li>Fix the update indicator so only the blue footer link pulses when a new version is available.</li>

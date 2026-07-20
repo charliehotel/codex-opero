@@ -62,7 +62,7 @@ struct QuotaResetDetector {
                 providerID: quota.providerID,
                 windowID: window.id,
                 windowName: window.name,
-                remainingPercent: window.remainingPercent,
+                remainingPercent: window.remainingPercent ?? 100,
                 resetMarker: resetMarker(for: quota, window: window, kind: candidate.kind),
                 kind: candidate.kind
             )

@@ -22,21 +22,21 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
 public struct QuotaWindow: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
-    public let usedPercent: Int
+    public let usedPercent: Int?
     public let resetAt: Date?
 
-    public init(id: String? = nil, name: String, usedPercent: Int, resetAt: Date?) {
+    public init(id: String? = nil, name: String, usedPercent: Int?, resetAt: Date?) {
         self.id = id ?? name
         self.name = name
         self.usedPercent = usedPercent
         self.resetAt = resetAt
     }
 
-    public var remainingPercent: Int {
-        max(0, min(100, 100 - usedPercent))
+    public var remainingPercent: Int? {
+        usedPercent.map { max(0, min(100, 100 - $0)) }
     }
 
-    public func percent(for displayMode: QuotaMetricDisplayMode) -> Int {
+    public func percent(for displayMode: QuotaMetricDisplayMode) -> Int? {
         switch displayMode {
         case .remaining:
             return remainingPercent
@@ -110,10 +110,14 @@ public struct ProviderSnapshot: Equatable, Identifiable, Sendable {
     public func compactTitle(displayMode: QuotaMetricDisplayMode) -> String {
         switch status {
         case .loaded(let quota):
-            return "\(quota.primary.percent(for: displayMode))%/\(quota.secondary.percent(for: displayMode))%"
+            let pStr = quota.primary.percent(for: displayMode).map { "\($0)%" } ?? "--"
+            let sStr = quota.secondary.percent(for: displayMode).map { "\($0)%" } ?? "--"
+            return "\(pStr)/\(sStr)"
         case .loading(let previousQuota):
             if let previousQuota {
-                return "\(previousQuota.primary.percent(for: displayMode))%/\(previousQuota.secondary.percent(for: displayMode))%"
+                let pStr = previousQuota.primary.percent(for: displayMode).map { "\($0)%" } ?? "--"
+                let sStr = previousQuota.secondary.percent(for: displayMode).map { "\($0)%" } ?? "--"
+                return "\(pStr)/\(sStr)"
             }
             return "--/--"
         case .idle:
@@ -126,9 +130,9 @@ public struct ProviderSnapshot: Equatable, Identifiable, Sendable {
     public var primaryMenuValue: String {
         switch status {
         case .loaded(let quota):
-            return "\(quota.primary.remainingPercent)%"
+            return quota.primary.remainingPercent.map { "\($0)%" } ?? "--"
         case .loading(let previousQuota):
-            return previousQuota.map { "\($0.primary.remainingPercent)%" } ?? "--"
+            return previousQuota.flatMap { $0.primary.remainingPercent.map { "\($0)%" } } ?? "--"
         case .idle, .failed:
             return "--"
         }
@@ -137,9 +141,9 @@ public struct ProviderSnapshot: Equatable, Identifiable, Sendable {
     public var secondaryMenuValue: String {
         switch status {
         case .loaded(let quota):
-            return "\(quota.secondary.remainingPercent)%"
+            return quota.secondary.remainingPercent.map { "\($0)%" } ?? "--"
         case .loading(let previousQuota):
-            return previousQuota.map { "\($0.secondary.remainingPercent)%" } ?? "--"
+            return previousQuota.flatMap { $0.secondary.remainingPercent.map { "\($0)%" } } ?? "--"
         case .idle, .failed:
             return "--"
         }
@@ -148,10 +152,14 @@ public struct ProviderSnapshot: Equatable, Identifiable, Sendable {
     public var detailLine: String {
         switch status {
         case .loaded(let quota):
-            return "\(providerID.displayName)  \(quota.primary.remainingPercent)% / \(quota.secondary.remainingPercent)%"
+            let pStr = quota.primary.remainingPercent.map { "\($0)%" } ?? "--"
+            let sStr = quota.secondary.remainingPercent.map { "\($0)%" } ?? "--"
+            return "\(providerID.displayName)  \(pStr) / \(sStr)"
         case .loading(let previousQuota):
             if let previousQuota {
-                return "\(providerID.displayName)  \(previousQuota.primary.remainingPercent)% / \(previousQuota.secondary.remainingPercent)%"
+                let pStr = previousQuota.primary.remainingPercent.map { "\($0)%" } ?? "--"
+                let sStr = previousQuota.secondary.remainingPercent.map { "\($0)%" } ?? "--"
+                return "\(providerID.displayName)  \(pStr) / \(sStr)"
             }
             return "\(providerID.displayName)  refreshing..."
         case .idle:

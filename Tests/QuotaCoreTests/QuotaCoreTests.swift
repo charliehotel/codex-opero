@@ -1517,6 +1517,187 @@ func metricDisplayModePersistsAcrossStoreInstances() {
     #expect(secondStore.metricDisplayMode == .usage)
 }
 
+@Suite(.serialized)
+struct CodexProviderTests {
+    @MainActor
+    @Test
+    func codexProviderParsesUsageWithNullSecondaryWindow() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("QuotaCoreTests.\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let authURL = root.appendingPathComponent("auth.json")
+        let authJSON = """
+        {
+          "tokens": {
+            "access_token": "mock-token"
+          }
+        }
+        """
+        try authJSON.write(to: authURL, atomically: true, encoding: .utf8)
+
+        let responseJSON = """
+        {
+          "rate_limit": {
+            "allowed": false,
+            "limit_reached": true,
+            "primary_window": {
+              "used_percent": 85,
+              "limit_window_seconds": 604800,
+              "reset_after_seconds": 12345,
+              "reset_at": 1784955439
+            },
+            "secondary_window": null
+          }
+        }
+        """
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [CodexURLProtocolStub.self]
+        let session = URLSession(configuration: configuration)
+        defer {
+            CodexURLProtocolStub.requestHandler = nil
+            session.invalidateAndCancel()
+        }
+
+        CodexURLProtocolStub.requestHandler = { request in
+            #expect(request.url?.absoluteString == "https://chatgpt.com/backend-api/wham/usage")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer mock-token")
+
+            let httpResponse = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (httpResponse, Data(responseJSON.utf8))
+        }
+
+        let provider = CodexProvider(session: session, authFileURL: authURL)
+        let quota = try await provider.fetchQuota()
+
+        #expect(quota.providerID == .codex)
+        #expect(quota.primary.name == "5h")
+        #expect(quota.primary.usedPercent == nil)
+        #expect(quota.primary.resetAt == nil)
+        #expect(quota.primary.remainingPercent == nil)
+        
+        #expect(quota.secondary.name == "7d")
+        #expect(quota.secondary.usedPercent == 85)
+        #expect(quota.secondary.resetAt == Date(timeIntervalSince1970: 1784955439))
+        #expect(quota.secondary.remainingPercent == 15)
+    }
+
+    @MainActor
+    @Test
+    func codexProviderParsesUsageWithBothWindows() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("QuotaCoreTests.\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let authURL = root.appendingPathComponent("auth.json")
+        let authJSON = """
+        {
+          "tokens": {
+            "access_token": "mock-token-2"
+          }
+        }
+        """
+        try authJSON.write(to: authURL, atomically: true, encoding: .utf8)
+
+        let responseJSON = """
+        {
+          "rate_limit": {
+            "allowed": true,
+            "limit_reached": false,
+            "primary_window": {
+              "used_percent": 10,
+              "limit_window_seconds": 18000,
+              "reset_after_seconds": 1000,
+              "reset_at": 1784900000
+            },
+            "secondary_window": {
+              "used_percent": 40,
+              "limit_window_seconds": 604800,
+              "reset_after_seconds": 5000,
+              "reset_at": 1784950000
+            }
+          }
+        }
+        """
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [CodexURLProtocolStub.self]
+        let session = URLSession(configuration: configuration)
+        defer {
+            CodexURLProtocolStub.requestHandler = nil
+            session.invalidateAndCancel()
+        }
+
+        CodexURLProtocolStub.requestHandler = { request in
+            #expect(request.url?.absoluteString == "https://chatgpt.com/backend-api/wham/usage")
+
+            let httpResponse = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (httpResponse, Data(responseJSON.utf8))
+        }
+
+        let provider = CodexProvider(session: session, authFileURL: authURL)
+        let quota = try await provider.fetchQuota()
+
+        #expect(quota.providerID == .codex)
+        #expect(quota.primary.name == "5h")
+        #expect(quota.primary.usedPercent == 10)
+        #expect(quota.primary.resetAt == Date(timeIntervalSince1970: 1784900000))
+        #expect(quota.primary.remainingPercent == 90)
+        
+        #expect(quota.secondary.name == "7d")
+        #expect(quota.secondary.usedPercent == 40)
+        #expect(quota.secondary.resetAt == Date(timeIntervalSince1970: 1784950000))
+        #expect(quota.secondary.remainingPercent == 60)
+    }
+}
+
+private final class CodexURLProtocolStub: URLProtocol {
+    nonisolated(unsafe) static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let handler = CodexURLProtocolStub.requestHandler else {
+            client?.urlProtocol(self, didFailWithError: ProviderError.badResponse)
+            return
+        }
+
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
+}
+
 private final class AntigravityURLProtocolStub: URLProtocol {
     nonisolated(unsafe) static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 

@@ -9,7 +9,9 @@ struct QuotaPeekCLI {
         for provider in providers {
             do {
                 let quota = try await provider.fetchQuota()
-                print("\(quota.providerID.displayName): \(quota.primary.remainingPercent)%/\(quota.secondary.remainingPercent)%")
+                let pStr = quota.primary.remainingPercent.map { "\($0)%" } ?? "--"
+                let sStr = quota.secondary.remainingPercent.map { "\($0)%" } ?? "--"
+                print("\(quota.providerID.displayName): \(pStr)/\(sStr)")
             } catch {
                 let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 print("\(provider.providerID.displayName): --/-- (\(message))")
