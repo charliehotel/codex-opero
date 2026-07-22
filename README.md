@@ -138,6 +138,13 @@ Requires macOS and an existing Codex, Claude, or Antigravity login on the local 
 ## Release Notes
 
 <details>
+  <summary>v0.2.6</summary>
+  <ul>
+    <li>Fix Antigravity usage display for free accounts (Starter Quota): the Antigravity backend stopped returning a 5h window for free-tier users, causing usage fetch to fail silently. The 5h slot now shows <code>--</code> and the weekly (7d) window displays correctly.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.5</summary>
   <ul>
     <li>Fix usage fetching decoding errors caused by Codex's integration into the ChatGPT desktop app.</li>

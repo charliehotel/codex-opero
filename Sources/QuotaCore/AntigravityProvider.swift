@@ -523,10 +523,26 @@ public struct AntigravityProvider: UsageProvider {
                 }
             )
         }
-        guard let primary = summaryWindow(from: groups[0]),
-              let secondary = summaryWindow(from: groups[1]) else {
-            return nil
-        }
+        // 각 그룹별로 5h 윈도우를 우선 사용하고, 없으면 (무료 계정) 7d로 폴백.
+        // 5h도 7d도 없으면 '--' 표시용 placeholder 사용.
+        let fiveHourPlaceholder = QuotaWindow(
+            id: "5h",
+            name: "5h",
+            usedPercent: nil,
+            resetAt: nil
+        )
+        let sevenDayPlaceholder = QuotaWindow(
+            id: "7d",
+            name: "7d",
+            usedPercent: nil,
+            resetAt: nil
+        )
+        let primary = summaryWindow(from: groups[0])
+            ?? summaryWindow7d(from: groups[0])
+            ?? fiveHourPlaceholder
+        let secondary = summaryWindow(from: groups[1])
+            ?? summaryWindow7d(from: groups[1])
+            ?? sevenDayPlaceholder
         return ProviderQuota(
             providerID: providerID,
             primary: primary,
@@ -536,6 +552,7 @@ public struct AntigravityProvider: UsageProvider {
         )
     }
 
+    /// 5h 윈도우를 대표값으로 반환. 5h가 없으면 nil (무료 계정 등).
     private func summaryWindow(from group: QuotaDetailGroup) -> QuotaWindow? {
         guard let fiveHour = group.windows.first(where: { $0.name == "5h" }) else {
             return nil
@@ -550,6 +567,11 @@ public struct AntigravityProvider: UsageProvider {
             usedPercent: 100,
             resetAt: weekly.resetAt
         )
+    }
+
+    /// 7d/weekly 윈도우를 반환. 무료 계정처럼 5h가 없고 weekly만 있을 때 사용.
+    private func summaryWindow7d(from group: QuotaDetailGroup) -> QuotaWindow? {
+        group.windows.first(where: { $0.name == "7d" })
     }
 
     private func remainingFraction(from quotaInfo: AgyQuotaInfo?, now: Date = Date()) -> Double {
