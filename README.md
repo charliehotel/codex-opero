@@ -138,6 +138,14 @@ Requires macOS and an existing Codex, Claude, or Antigravity login on the local 
 ## Release Notes
 
 <details>
+  <summary>v0.2.7</summary>
+  <ul>
+    <li>Fix Antigravity usage appearing as <code>--/--</code> even when signed in with Antigravity 2.26.0 running. Read the authentication token from the running Antigravity server's arguments because recent versions no longer log it.</li>
+    <li>Preserve the log-based connection fallback for older versions and support accounts with weekly-only (7d) quota.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.6</summary>
   <ul>
     <li>Fix Antigravity usage display for free accounts (Starter Quota): the Antigravity backend stopped returning a 5h window for free-tier users, causing usage fetch to fail silently. The 5h slot now shows <code>--</code> and the weekly (7d) window displays correctly.</li>

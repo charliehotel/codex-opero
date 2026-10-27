@@ -137,6 +137,14 @@ macOS 환경과 로컬의 기존 Codex, Claude 또는 Antigravity 로그인 상�
 ## 릴리즈 노트
 
 <details>
+  <summary>v0.2.7</summary>
+  <ul>
+    <li>Antigravity 2.26.0에서 로그인하고 앱을 실행해 두어도 사용량이 <code>--/--</code>로 표시되던 문제를 수정했습니다. 로그에 더 이상 기록되지 않는 인증 토큰을 실행 중인 Antigravity 서버의 인자에서 읽습니다.</li>
+    <li>이전 버전의 로그 기반 연결 방식과 주간(7d) 쿼터만 있는 계정의 표시를 유지합니다.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.6</summary>
   <ul>
     <li>Antigravity 무료 계정(Starter Quota) 사용량 조회 복구: Antigravity 백엔드가 무료 계정에 5h 윈도우를 반환하지 않도록 API를 변경하면서 사용량 조회 전체가 조용히 실패하던 문제를 수정합니다. 이제 5h는 <code>--</code>로 표시되고, weekly(7d) 사용량은 정상적으로 표시됩니다.</li>
