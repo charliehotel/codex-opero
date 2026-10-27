@@ -1,0 +1,51 @@
+     1	import AppKit
+     2	import SwiftUI
+     3	import QuotaCore
+     4	
+     5	struct UpdateStatusView: View {
+     6	    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+     7	    @State private var isDimmed = false
+     8	
+     9	    let currentVersion: AppVersion?
+    10	    let availableUpdate: AvailableUpdate?
+    11	
+    12	    var body: some View {
+    13	        if let availableUpdate {
+    14	            Button {
+    15	                NSWorkspace.shared.open(availableUpdate.releaseURL)
+    16	            } label: {
+    17	                Text(availableUpdate.displayString)
+    18	                    .font(.caption.weight(.semibold))
+    19	                    .monospacedDigit()
+    20	                    .foregroundStyle(Color.accentColor)
+    21	                    .opacity(isDimmed ? 0.45 : 1)
+    22	                    .animation(
+    23	                        reduceMotion
+    24	                            ? nil
+    25	                            : .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+    26	                        value: isDimmed
+    27	                    )
+    28	            }
+    29	            .buttonStyle(.plain)
+    30	            .accessibilityLabel(
+    31	                "\(availableUpdate.latestVersion.displayString) 업데이트 가능, GitHub Releases 열기"
+    32	            )
+    33	            .accessibilityAddTraits(.isLink)
+    34	            .onAppear {
+    35	                updateAnimation()
+    36	            }
+    37	            .onChange(of: reduceMotion) {
+    38	                updateAnimation()
+    39	            }
+    40	        } else if let currentVersion {
+    41	            Text(currentVersion.displayString)
+    42	                .font(.caption)
+    43	                .monospacedDigit()
+    44	                .foregroundStyle(.tertiary)
+    45	        }
+    46	    }
+    47	
+    48	    private func updateAnimation() {
+    49	        isDimmed = reduceMotion == false
+    50	    }
+    51	}

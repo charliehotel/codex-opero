@@ -10,6 +10,7 @@ public struct AntigravityProvider: UsageProvider {
     private let usageExecutableURL: URL?
     private let usageTimeout: TimeInterval
     private let ideMainLogURL: URL?
+    private let ideProcessArguments: (@Sendable () -> String)?
     private let ideSession: URLSession
     private let ideRequestTimeout: TimeInterval
     private let legacyFallbacksEnabled: Bool
@@ -36,7 +37,8 @@ public struct AntigravityProvider: UsageProvider {
             .appendingPathComponent("Library/Logs/Antigravity/main.log"),
         ideSession: URLSession = .shared,
         ideRequestTimeout: TimeInterval = 5,
-        legacyFallbacksEnabled: Bool = false
+        legacyFallbacksEnabled: Bool = false,
+        ideProcessArguments: (@Sendable () -> String)? = nil
     ) {
         self.cacheDirectoryURLs = cacheDirectoryURLs
         self.historyDirectoryURLs = historyDirectoryURLs
@@ -44,6 +46,7 @@ public struct AntigravityProvider: UsageProvider {
         self.usageExecutableURL = usageExecutableURL
         self.usageTimeout = usageTimeout
         self.ideMainLogURL = ideMainLogURL
+        self.ideProcessArguments = ideProcessArguments
         self.ideSession = ideSession
         self.ideRequestTimeout = ideRequestTimeout
         self.legacyFallbacksEnabled = legacyFallbacksEnabled
@@ -176,13 +179,45 @@ public struct AntigravityProvider: UsageProvider {
             let ideMainLogURL,
             FileManager.default.fileExists(atPath: ideMainLogURL.path),
             let log = try? String(contentsOf: ideMainLogURL, encoding: .utf8),
-            let csrfToken = lastCapture(in: log, pattern: #"--csrf_token\s+([0-9A-Za-z-]+)"#),
             let portText = lastCapture(in: log, pattern: #"Local:\s+https://127\.0\.0\.1:(\d+)/"#),
-            let httpsPort = Int(portText)
+            let httpsPort = Int(portText),
+            let csrfToken = runningIDECSRFToken()
+                ?? lastCapture(in: log, pattern: #"--csrf_token\s+([0-9A-Za-z-]+)"#)
         else {
             return nil
         }
         return AgyIDEConnectionInfo(httpsPort: httpsPort, csrfToken: csrfToken)
+    }
+
+    private func runningIDECSRFToken() -> String? {
+        let arguments: String
+        if let ideProcessArguments {
+            arguments = ideProcessArguments()
+        } else {
+            // Antigravity 2.26 no longer logs the language server's CSRF token.
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/ps")
+            process.arguments = ["-ww", "-U", String(getuid()), "-o", "args="]
+            let output = Pipe()
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            guard (try? process.run()) != nil else { return nil }
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            arguments = String(decoding: data, as: UTF8.self)
+        }
+
+        for line in arguments.split(separator: "\n") {
+            guard line.range(
+                of: #"^/[^\r\n]*/Antigravity\.app/Contents/Resources/bin/language_server\s+"#,
+                options: .regularExpression
+            ) != nil else { continue }
+            if let token = lastCapture(in: String(line), pattern: #"--csrf_token(?:=|\s+)([0-9A-Za-z-]+)"#) {
+                return token
+            }
+        }
+        return nil
     }
 
     private func lastCapture(in text: String, pattern: String) -> String? {

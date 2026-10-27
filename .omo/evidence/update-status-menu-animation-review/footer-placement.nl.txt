@@ -1,0 +1,35 @@
+   140	            MenuSettingsView(
+   141	                store: store,
+   142	                loginItemManager: loginItemManager
+   143	            )
+   144	
+   145	            Divider()
+   146	
+   147	            footerGroup
+   148	        }
+   149	        .padding(14)
+   150	        .frame(width: 320)
+   151	        .task {
+   152	            loginItemManager.refreshStatus()
+   153	        }
+   154	        .onAppear {
+   155	            store.setMenuPresented(true)
+   156	        }
+   157	        .onDisappear {
+   158	            store.setMenuPresented(false)
+   159	        }
+   160	    }
+   161	
+   162	    private var footerGroup: some View {
+   163	        HStack {
+   164	            Button("Quit") {
+   165	                NSApplication.shared.terminate(nil)
+   166	            }
+   167	            Spacer()
+   168	            UpdateStatusView(
+   169	                currentVersion: updateChecker.currentVersion,
+   170	                availableUpdate: updateChecker.availableUpdate
+   171	            )
+   172	        }
+   173	    }
+   174	}

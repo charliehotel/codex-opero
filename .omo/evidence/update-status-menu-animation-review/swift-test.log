@@ -1,0 +1,107 @@
+[0/1] Planning build
+Building for debugging...
+[0/6] Write swift-version--58304C5D6DBC2206.txt
+Build complete! (0.11s)
+Test Suite 'All tests' started at 2026-07-10 21:36:53.468.
+Test Suite 'All tests' passed at 2026-07-10 21:36:53.469.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test selectedProviderSkipsUnavailableProvidersWhenRotating() started.
+◇ Test antigravityProviderStopsWhenAgyStartsOAuthFlow() started.
+◇ Test metricDisplayModePersistsAcrossStoreInstances() started.
+◇ Test expandedProvidersPersistAcrossStoreInstances() started.
+◇ Test autoRotateIntervalPersistsAcrossStoreInstances() started.
+◇ Test updatePolicyRestoresOnlyNewerCachedVersion() started.
+◇ Test weeklyResetStringUsesEnglishCompactUnits() started.
+◇ Test updatePolicyRejectsUnavailableReleaseKinds() started.
+◇ Test selectedProviderPersistsAcrossStoreInstances() started.
+◇ Test quotaResetEventCanFireAgainAfterUsageDropsBelowFull() started.
+◇ Test updateCheckPolicyUsesDailyCadence() started.
+◇ Test updateCheckPolicyDetectsNewerStableRelease() started.
+◇ Test antigravityProviderParsesTerminalRedrawUsageOutput() started.
+◇ Test updateCheckRunsImmediatelyAfterMissedDailyWindow() started.
+◇ Test quotaResetEventIncludesWeeklyWindowAndDoesNotRepeatForSameResetMarker() started.
+◇ Test loadedSnapshotUsesCompactMenuTitleForSelectedDisplayMode() started.
+◇ Test fiveHourResetStringUsesExactLocalTime() started.
+◇ Test antigravityProviderSanitizesTimedOutTerminalOutput() started.
+◇ Test quotaResetEventDeduplicatesIdenticalAntigravityMarkers() started.
+◇ Test antigravityProviderParsesExhaustedRefreshOnlyUsageOutput() started.
+◇ Test quotaResetEventDoesNotRepeatWhileAntigravityStaysFullEvenIfResetTimeChanges() started.
+◇ Test loadedSnapshotUsesCompactMenuTitle() started.
+◇ Test defaultProvidersExcludeRetiredGemini() started.
+◇ Test antigravityProviderPrefersLiveUsageOutput() started.
+◇ Test antigravityProviderReadsResetTimerFromModelRowForAvailableGoogleBucket() started.
+◇ Test quotaResetEventFiresOnLaunchWhenShortWindowIsFull() started.
+◇ Test antigravityProviderUsesCurrentAccountAndHistoryBuckets() started.
+◇ Test antigravityProviderDoesNotAutomaticallyLaunchAgyWithoutIDE() started.
+◇ Test persistedGeminiSelectionMigratesToAntigravity() started.
+◇ Test antigravityProviderUsesSharedModelBuckets() started.
+◇ Test appVersionUsesPrefixedDisplayString() started.
+◇ Test quotaResetEventRetriesWhenNotificationDeliveryFails() started.
+◇ Test antigravityProviderUsesAntigravityIDELocalQuotaSummary() started.
+◇ Test availableUpdateUsesCurrentAndLatestDisplayString() started.
+◇ Test autoRotateSettingPersistsAcrossStoreInstances() started.
+◇ Test appVersionComparesSemanticTags() started.
+◇ Test antigravityProviderPreservesResetTimerForAvailableRefreshOnlyGoogleBucket() started.
+◇ Test quotaResetEventUsesAntigravityMenuBuckets() started.
+◇ Test updatePolicyFallsBackWhenDirectReleaseURLIsUnavailable() started.
+◇ Test refreshPublishesSnapshotsAsProvidersFinishAndSelectsFirstLoadedProvider() started.
+◇ Test antigravityProviderParsesStandaloneZeroPercentUsageOutput() started.
+◇ Test updateCheckPolicyComputesNextCheckDelay() started.
+◇ Test updatePolicyRejectsInvalidCachedUpdate() started.
+◇ Test updatePolicyBuildsAvailableUpdateWithDirectReleaseURL() started.
+◇ Test loadingSnapshotUsesPreviousQuotaForSelectedDisplayMode() started.
+◇ Test updateReleaseRequestUsesBoundedGitHubContract() started.
+◇ Test remainingPercentIsClamped() started.
+◇ Test refreshIntervalPersistsAcrossStoreInstances() started.
+✔ Test updateCheckPolicyUsesDailyCadence() passed after 0.007 seconds.
+✔ Test updateCheckPolicyDetectsNewerStableRelease() passed after 0.007 seconds.
+✔ Test updateCheckRunsImmediatelyAfterMissedDailyWindow() passed after 0.007 seconds.
+✔ Test loadedSnapshotUsesCompactMenuTitleForSelectedDisplayMode() passed after 0.007 seconds.
+✔ Test updatePolicyRestoresOnlyNewerCachedVersion() passed after 0.007 seconds.
+✔ Test updatePolicyRejectsUnavailableReleaseKinds() passed after 0.007 seconds.
+✔ Test loadedSnapshotUsesCompactMenuTitle() passed after 0.007 seconds.
+✔ Test fiveHourResetStringUsesExactLocalTime() passed after 0.007 seconds.
+✔ Test weeklyResetStringUsesEnglishCompactUnits() passed after 0.007 seconds.
+✔ Test antigravityProviderDoesNotAutomaticallyLaunchAgyWithoutIDE() passed after 0.007 seconds.
+✔ Test appVersionUsesPrefixedDisplayString() passed after 0.007 seconds.
+✔ Test availableUpdateUsesCurrentAndLatestDisplayString() passed after 0.007 seconds.
+✔ Test antigravityProviderUsesCurrentAccountAndHistoryBuckets() passed after 0.007 seconds.
+✔ Test appVersionComparesSemanticTags() passed after 0.007 seconds.
+✔ Test updatePolicyFallsBackWhenDirectReleaseURLIsUnavailable() passed after 0.007 seconds.
+✔ Test updateCheckPolicyComputesNextCheckDelay() passed after 0.007 seconds.
+✔ Test updatePolicyBuildsAvailableUpdateWithDirectReleaseURL() passed after 0.007 seconds.
+✔ Test updatePolicyRejectsInvalidCachedUpdate() passed after 0.007 seconds.
+✔ Test loadingSnapshotUsesPreviousQuotaForSelectedDisplayMode() passed after 0.007 seconds.
+✔ Test updateReleaseRequestUsesBoundedGitHubContract() passed after 0.007 seconds.
+✔ Test remainingPercentIsClamped() passed after 0.007 seconds.
+✔ Test autoRotateIntervalPersistsAcrossStoreInstances() passed after 0.007 seconds.
+✔ Test antigravityProviderUsesSharedModelBuckets() passed after 0.008 seconds.
+✔ Test metricDisplayModePersistsAcrossStoreInstances() passed after 0.009 seconds.
+✔ Test antigravityProviderUsesAntigravityIDELocalQuotaSummary() passed after 0.010 seconds.
+✔ Test expandedProvidersPersistAcrossStoreInstances() passed after 0.011 seconds.
+✔ Test selectedProviderPersistsAcrossStoreInstances() passed after 0.011 seconds.
+✔ Test defaultProvidersExcludeRetiredGemini() passed after 0.013 seconds.
+✔ Test persistedGeminiSelectionMigratesToAntigravity() passed after 0.014 seconds.
+✔ Test autoRotateSettingPersistsAcrossStoreInstances() passed after 0.015 seconds.
+✔ Test refreshIntervalPersistsAcrossStoreInstances() passed after 0.016 seconds.
+✔ Test quotaResetEventDeduplicatesIdenticalAntigravityMarkers() passed after 0.017 seconds.
+✔ Test selectedProviderSkipsUnavailableProvidersWhenRotating() passed after 0.018 seconds.
+✔ Test quotaResetEventIncludesWeeklyWindowAndDoesNotRepeatForSameResetMarker() passed after 0.018 seconds.
+✔ Test quotaResetEventDoesNotRepeatWhileAntigravityStaysFullEvenIfResetTimeChanges() passed after 0.018 seconds.
+✔ Test quotaResetEventUsesAntigravityMenuBuckets() passed after 0.018 seconds.
+✔ Test quotaResetEventCanFireAgainAfterUsageDropsBelowFull() passed after 0.018 seconds.
+✔ Test quotaResetEventRetriesWhenNotificationDeliveryFails() passed after 0.018 seconds.
+✔ Test quotaResetEventFiresOnLaunchWhenShortWindowIsFull() passed after 0.018 seconds.
+✔ Test antigravityProviderStopsWhenAgyStartsOAuthFlow() passed after 0.634 seconds.
+✔ Test refreshPublishesSnapshotsAsProvidersFinishAndSelectsFirstLoadedProvider() passed after 0.643 seconds.
+✔ Test antigravityProviderSanitizesTimedOutTerminalOutput() passed after 1.048 seconds.
+✔ Test antigravityProviderPreservesResetTimerForAvailableRefreshOnlyGoogleBucket() passed after 5.023 seconds.
+✔ Test antigravityProviderParsesTerminalRedrawUsageOutput() passed after 5.086 seconds.
+✔ Test antigravityProviderParsesStandaloneZeroPercentUsageOutput() passed after 5.087 seconds.
+✔ Test antigravityProviderPrefersLiveUsageOutput() passed after 5.098 seconds.
+✔ Test antigravityProviderParsesExhaustedRefreshOnlyUsageOutput() passed after 5.102 seconds.
+✔ Test antigravityProviderReadsResetTimerFromModelRowForAvailableGoogleBucket() passed after 5.165 seconds.
+✔ Test run with 48 tests in 0 suites passed after 5.166 seconds.

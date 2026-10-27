@@ -1,0 +1,5 @@
+6:    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+15:                NSWorkspace.shared.open(availableUpdate.releaseURL)
+21:                    .opacity(isDimmed ? 0.45 : 1)
+22:                    .animation(
+33:            .accessibilityAddTraits(.isLink)

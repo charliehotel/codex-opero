@@ -465,8 +465,8 @@ func antigravityProviderUsesCurrentAccountAndHistoryBuckets() async throws {
     #expect(quota.detailGroups[1].windows.first?.usedPercent == 100)
 }
 
-@Test
-func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
+@Test(.serialized, arguments: [false, true])
+func antigravityProviderUsesAntigravityIDELocalQuotaSummary(currentVersion: Bool) async throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("QuotaCoreTests.antigravityIDE.\(UUID().uuidString)")
     let logURL = root.appendingPathComponent("main.log")
@@ -477,7 +477,7 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
     let httpsPort = 12345
     let log = """
     [2026-05-22 14:34:06.210] [info]
-    Spawning: language_server --https_server_port 0 --csrf_token \(token) --app_data_dir antigravity
+    \(currentVersion ? "Starting app (v2.26.0) with dynamic port…" : "Spawning: language_server --https_server_port 0 --csrf_token \(token) --app_data_dir antigravity")
     [2026-05-22 14:34:08.049] [info]    Local:       https://127.0.0.1:\(httpsPort)/
     """
     try log.data(using: .utf8)?.write(to: logURL)
@@ -533,6 +533,20 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
     }
     """
 
+    var responseData = Data(responseJSON.utf8)
+    if currentVersion {
+        var payload = try #require(JSONSerialization.jsonObject(with: responseData) as? [String: Any])
+        var response = try #require(payload["response"] as? [String: Any])
+        var groups = try #require(response["groups"] as? [[String: Any]])
+        for index in groups.indices {
+            let buckets = try #require(groups[index]["buckets"] as? [[String: Any]])
+            groups[index]["buckets"] = buckets.filter { $0["window"] as? String == "weekly" }
+        }
+        response["groups"] = groups
+        payload["response"] = response
+        responseData = try JSONSerialization.data(withJSONObject: payload)
+    }
+
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [AntigravityURLProtocolStub.self]
     let session = URLSession(configuration: configuration)
@@ -552,7 +566,7 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
             httpVersion: nil,
             headerFields: nil
         )!
-        return (httpResponse, Data(responseJSON.utf8))
+        return (httpResponse, responseData)
     }
 
     let quota = try await AntigravityProvider(
@@ -561,22 +575,30 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary() async throws {
         currentAccountURL: root.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: nil,
         ideMainLogURL: logURL,
-        ideSession: session
+        ideSession: session,
+        ideProcessArguments: {
+            guard currentVersion else { return "" }
+            return """
+            /Applications/Other.app/Contents/Resources/bin/language_server --csrf_token wrong-token
+            /Applications/Antigravity.app/Contents/Resources/bin/language_server --standalone --https_server_port 0 --csrf_token \(token) --app_data_dir antigravity
+            /Applications/Antigravity IDE.app/Contents/Resources/bin/language_server --csrf_token wrong-ide-token
+            """
+        }
     ).fetchQuota()
 
-    #expect(quota.primary.remainingPercent == 100)
-    #expect(quota.primary.usedPercent == 0)
+    #expect(quota.primary.remainingPercent == (currentVersion ? 97 : 100))
+    #expect(quota.primary.usedPercent == (currentVersion ? 3 : 0))
     #expect(quota.primary.resetAt != nil)
     #expect(quota.secondary.remainingPercent == 0)
     #expect(quota.secondary.usedPercent == 100)
     #expect(quota.secondary.resetAt != nil)
     #expect(quota.detailGroups.map(\.name) == ["Gemini Models", "Claude and GPT models"])
-    #expect(quota.detailGroups[0].windows.map(\.id) == ["gemini-5h", "gemini-weekly"])
-    #expect(quota.detailGroups[0].windows.map(\.name) == ["5h", "7d"])
-    #expect(quota.detailGroups[0].windows.map(\.remainingPercent) == [100, 97])
-    #expect(quota.detailGroups[1].windows.map(\.id) == ["3p-5h", "3p-weekly"])
-    #expect(quota.detailGroups[1].windows.map(\.name) == ["5h", "7d"])
-    #expect(quota.detailGroups[1].windows.map(\.remainingPercent) == [69, 0])
+    #expect(quota.detailGroups[0].windows.map(\.id) == (currentVersion ? ["gemini-weekly"] : ["gemini-5h", "gemini-weekly"]))
+    #expect(quota.detailGroups[0].windows.map(\.name) == (currentVersion ? ["7d"] : ["5h", "7d"]))
+    #expect(quota.detailGroups[0].windows.map(\.remainingPercent) == (currentVersion ? [97] : [100, 97]))
+    #expect(quota.detailGroups[1].windows.map(\.id) == (currentVersion ? ["3p-weekly"] : ["3p-5h", "3p-weekly"]))
+    #expect(quota.detailGroups[1].windows.map(\.name) == (currentVersion ? ["7d"] : ["5h", "7d"]))
+    #expect(quota.detailGroups[1].windows.map(\.remainingPercent) == (currentVersion ? [0] : [69, 0]))
 }
 
 @Test
