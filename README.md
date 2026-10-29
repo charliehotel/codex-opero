@@ -39,8 +39,8 @@ This app does not provide its own login UI or OAuth flow.
 Instead, it reuses existing local authentication state and only fetches usage.
 
 - `Codex`: uses `~/.codex/auth.json`
-- `Claude`: uses the macOS Keychain item `Claude Code-credentials` or `~/.claude/.credentials.json`
-- `Antigravity` (agy): reads model quota only from a running Antigravity IDE local service; it requires an existing Antigravity login state
+- `Claude`: uses the macOS Keychain item `Claude Code-credentials` or `~/.claude/.credentials.json` and automatically refreshes expiring OAuth access tokens.
+- `Antigravity` (agy): reads the signed-in CLI Keychain credentials or the IDE state database and queries Google directly, even while the Antigravity app is closed.
 
 That means Codex, Claude, or Antigravity must already be logged in on the local machine.
 
@@ -51,12 +51,16 @@ For `Antigravity`, the two menu bar values normally show the remaining 5-hour qu
 - `Gemini Models`: Gemini Flash and Gemini Pro variants
 - `Claude and GPT models`: Claude Opus/Sonnet and GPT-OSS variants
 
-Open the provider details to see compact `[5h]` and `[7d]` rows for each group, with the five-hour limit first. `codex-opero` reads Antigravity's local `RetrieveUserQuotaSummary` service, the same source used by the current Model Quota screen, and retains the older per-model endpoint as a compatibility fallback. For safety, it does not automatically launch `agy` in the background: repeated CLI launches can initiate authentication flows and create IDE workspace entries. Keep the Antigravity app running when reading its quota; if the local service is unavailable, the app displays an explicit availability message instead of launching `agy` or showing stale cache values.
+Expand a provider to see its `[5h]` and `[7d]` windows. Antigravity quota is fetched from Google Cloud Code: `loadCodeAssist` resolves the signed-in account project, then `retrieveUserQuotaSummary` returns the shared quota pools. Weekly-only accounts are supported. If the remote path fails, the existing IDE local service remains a compatibility fallback. Background refresh never launches Antigravity or `agy`.
+
+Antigravity access tokens are automatically refreshed. The original IDE database and CLI credentials remain unchanged; refreshed tokens are stored separately in the `codex-opero.AntigravityOAuth` Keychain item and are invalidated when the source login changes. If the refresh token is revoked, sign in again with Antigravity or `agy`.
+
+Claude refresh preserves unrelated credential fields and writes back to the original store. Existing Keychain items are updated in place to retain access controls. A `429` response pauses requests until the server's `Retry-After` deadline, including manual refreshes.
 
 The `[5h]` reset uses the macOS time format and shows the exact time to the minute, such as `resets at 2:18 PM`. Other windows, including `[7d]`, retain the compact relative-time format.
 
 If you use `Claude`, macOS may ask for your password when the app first tries to read the Keychain credentials.
-This prompt **only appears if you use Claude and its keychain item exists**. If you do not use Claude, no credential prompt appears.
+This prompt appears when access to the credential item needs authorization. `Always Allow` grants Keychain access; it does not extend the OAuth token lifetime. Rebuilt apps or changed Keychain access policies may require authorization again.
 
 Because `codex-opero` refreshes on a recurring interval, choosing `Allow` can cause repeated prompts.  
 To avoid that, choose **`Always Allow`** for `codex-opero` when macOS asks for access to the keychain credential.
@@ -136,6 +140,16 @@ swift run codex-opero
 Requires macOS and an existing Codex, Claude, or Antigravity login on the local machine.
 
 ## Release Notes
+
+<details>
+  <summary>v0.2.8</summary>
+  <ul>
+    <li>Automatically refresh Claude OAuth tokens near expiry or after <code>401</code>. Update the original Keychain item in place to preserve access controls and <code>Always Allow</code> grants, preserve unrelated credential fields, and protect concurrent account or credential changes.</li>
+    <li>Respect Claude <code>429</code> cooldowns for usage and token requests, including manual refreshes.</li>
+    <li>Fetch Antigravity quota directly from Google with the app closed and automatically refresh OAuth tokens. Keep the original IDE database and <code>agy</code> credentials unchanged and store refreshed tokens in a dedicated Keychain item, with checks for source account changes.</li>
+    <li>Retain the IDE local-service fallback and weekly-only (7d) quota support. See the <a href="./ReleaseNotes/v0.2.8.md">full release notes</a> for validation results and limits.</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.2.7</summary>

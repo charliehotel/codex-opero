@@ -39,8 +39,8 @@
 대신 이미 로컬에 저장된 인증 상태를 재사용해 usage만 조회합니다.
 
 - `Codex`: `~/.codex/auth.json` 사용
-- `Claude`: macOS Keychain의 `Claude Code-credentials` 또는 `~/.claude/.credentials.json` 사용
-- `Antigravity` (agy): 실행 중인 Antigravity IDE의 로컬 서비스에서만 model quota를 읽습니다. 기존 Antigravity 로그인 상태가 필요합니다
+- `Claude`: macOS Keychain의 `Claude Code-credentials` 또는 `~/.claude/.credentials.json`을 사용하며, 만료가 임박한 접근 토큰은 저장된 갱신 토큰으로 자동 갱신합니다.
+- `Antigravity` (agy): 로그인된 `agy`의 키체인 인증 또는 Antigravity의 로컬 인증 데이터베이스를 읽어 Google 서버에서 quota를 직접 조회합니다. Antigravity 앱을 실행하지 않아도 됩니다.
 
 즉, 이 앱은 이미 로그인된 상태를 활용하므로 Codex, Claude 또는 Antigravity에 로그인 되어 있어야 합니다.
 
@@ -51,14 +51,18 @@
 - `Gemini Models`: Gemini Flash 및 Gemini Pro 계열
 - `Claude and GPT models`: Claude Opus/Sonnet 및 GPT-OSS 계열
 
-provider 상세 영역을 열면 각 그룹의 `[5h]`, `[7d]` 행을 5시간 구간부터 간결하게 확인할 수 있습니다. `codex-opero`는 현재 Model Quota 화면과 같은 데이터 소스인 Antigravity 로컬 `RetrieveUserQuotaSummary` service를 조회하며, 이전 버전 호환을 위해 기존 모델별 endpoint도 fallback으로 유지합니다. 안전을 위해 백그라운드에서 `agy`를 자동 실행하지 않습니다. 반복적인 CLI 실행은 인증 흐름을 시작하거나 IDE workspace 항목을 만들 수 있습니다. Antigravity 사용량을 조회할 때에는 Antigravity 앱을 실행해두어야 하며, 로컬 service를 사용할 수 없으면 `agy`를 실행하거나 오래된 cache 값을 표시하는 대신 명확한 안내 메시지를 표시합니다.
+provider 상세 영역을 열면 각 그룹의 `[5h]`, `[7d]` 행을 5시간 구간부터 확인할 수 있습니다. `codex-opero`는 Google Cloud Code의 `loadCodeAssist`로 계정 프로젝트를 확인하고 `retrieveUserQuotaSummary`를 조회합니다. 무료 계정처럼 주간 quota만 반환하는 경우에도 해당 구간을 표시합니다. 원격 조회가 실패하면 기존 Antigravity 로컬 서비스로 재시도하며, 백그라운드에서 앱이나 `agy`를 실행하지 않습니다.
+
+Antigravity 접근 토큰도 자동 갱신합니다. 원본 IDE 데이터베이스와 `agy` 인증은 수정하지 않으며, 갱신한 토큰은 `codex-opero.AntigravityOAuth` 키체인 항목에 보관합니다. 원본 로그인 정보가 바뀌면 이전 계정의 갱신 토큰을 사용하지 않습니다. 갱신 토큰까지 무효가 된 경우에는 Antigravity 또는 `agy`에서 다시 로그인해야 합니다.
+
+Claude 토큰 갱신은 기존 JSON의 다른 필드를 보존하고 원래 저장소에 반영합니다. 키체인은 항목을 삭제하거나 재생성하지 않고 데이터만 갱신합니다. 서버가 `429`를 반환하면 `Retry-After`가 지정한 시각까지 해당 조회를 중단합니다. 수동 새로고침도 이 대기 시간을 따릅니다.
 
 `[5h]` 행의 리셋 시간은 `resets at 오후 2:18`처럼 macOS의 시간 형식에 맞춰 분 단위의 정확한 시각으로 표시합니다. `[7d]` 등 나머지 구간은 기존의 간결한 상대시간 표시를 유지합니다.
 
 `Claude`를 사용하는 경우, 앱이 처음 Keychain 자격증명에 접근할 때 macOS가 암호를 물어볼 수 있습니다.
-이 팝업은 **사용자가 해당 AI 도구를 로그인하여 사용하고 있으며, 관련 키체인이 존재할 때만 1회** 나타납니다. (해당 AI 도구를 전혀 사용하지 않거나 로그인한 적이 없는 경우 팝업은 전혀 발생하지 않고 자동으로 스킵됩니다.)  
+이 팝업은 관련 키체인 항목에 대한 접근 권한이 필요할 때 나타납니다. `항상 허용`은 키체인 접근 권한을 저장하며 OAuth 토큰의 유효기간을 늘리지는 않습니다. 앱을 다시 빌드하거나 키체인 접근 정책이 바뀌면 재승인이 필요할 수 있습니다.
 
-`codex-opero`는 일정 간격으로 새로고침하므로, 팝업창이 뜰 때 `허용` 대신 **`항상 허용(Always Allow)`**을 선택하셔야 이후 비밀번호 요구 없이 백그라운드에서 매끄럽게 조회됩니다.
+`codex-opero`는 일정 간격으로 새로고침하므로, 팝업창이 뜰 때 `허용` 대신 **`항상 허용(Always Allow)`**을 선택하셔야 이후 같은 앱이 해당 항목을 읽을 때 반복해서 묻지 않도록 할 수 있습니다.
 
 <p>
   <img src="./Screenshots/Screenshot_v0.1.9_keychain.png" alt="codex-opero macOS 키체인 접근 팝업" width="520" />
@@ -135,6 +139,16 @@ swift run codex-opero
 macOS 환경과 로컬의 기존 Codex, Claude 또는 Antigravity 로그인 상태가 필요합니다.
 
 ## 릴리즈 노트
+
+<details>
+  <summary>v0.2.8</summary>
+  <ul>
+    <li>Claude OAuth 토큰을 만료 직전 또는 <code>401</code> 응답 시 자동 갱신합니다. 원래 키체인 항목의 데이터만 갱신하여 접근 제어와 <code>항상 허용</code> 권한을 보존하고, 인증정보의 다른 필드와 동시 계정·인증정보 변경을 보호합니다.</li>
+    <li>Claude 사용량 조회와 토큰 갱신의 <code>429</code> 대기 시간을 수동 새로고침에도 적용합니다.</li>
+    <li>Antigravity 앱이 꺼져 있어도 Google에서 쿼터를 직접 조회하고 OAuth 토큰을 자동 갱신합니다. 원본 IDE 데이터베이스와 <code>agy</code> 인증은 보존하며, 갱신된 토큰은 전용 키체인에 저장하고 원본 계정 변경을 확인합니다.</li>
+    <li>기존 IDE 로컬 서비스 조회 경로와 주간(7d) 쿼터만 있는 계정의 표시를 유지합니다. 검증 결과와 한계는 <a href="./ReleaseNotes/v0.2.8.md">전체 릴리즈 노트</a>에서 확인할 수 있습니다.</li>
+  </ul>
+</details>
 
 <details>
   <summary>v0.2.7</summary>

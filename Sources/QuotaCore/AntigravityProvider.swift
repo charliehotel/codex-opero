@@ -14,6 +14,7 @@ public struct AntigravityProvider: UsageProvider {
     private let ideSession: URLSession
     private let ideRequestTimeout: TimeInterval
     private let legacyFallbacksEnabled: Bool
+    private var cloudClient: AgyCloudClient?
 
     public init(
         cacheDirectoryURLs: [URL] = [
@@ -35,6 +36,7 @@ public struct AntigravityProvider: UsageProvider {
         usageTimeout: TimeInterval = 30,
         ideMainLogURL: URL? = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/Antigravity/main.log"),
+        cloudEnabled: Bool = true,
         ideSession: URLSession = .shared,
         ideRequestTimeout: TimeInterval = 5,
         legacyFallbacksEnabled: Bool = false,
@@ -50,14 +52,34 @@ public struct AntigravityProvider: UsageProvider {
         self.ideSession = ideSession
         self.ideRequestTimeout = ideRequestTimeout
         self.legacyFallbacksEnabled = legacyFallbacksEnabled
+        self.cloudClient = cloudEnabled ? .shared : nil
+    }
+
+    init(cloudClient: AgyCloudClient) {
+        self.init(ideMainLogURL: nil, cloudEnabled: false)
+        self.cloudClient = cloudClient
     }
 
     public func fetchQuota() async throws -> ProviderQuota {
+        var cloudError: Error?
+        if let cloudClient {
+            do {
+                let data = try await cloudClient.fetchSummary()
+                guard let snapshot = AgyIDEQuotaSummarySnapshot(data: data),
+                      let quota = quota(from: snapshot) else {
+                    throw ProviderError.unsupportedPayload
+                }
+                return quota
+            } catch {
+                cloudError = error
+            }
+        }
         if let quota = try? await fetchIDEUsageQuota() {
             return quota
         }
 
         guard legacyFallbacksEnabled else {
+            if let cloudError { throw cloudError }
             throw ProviderError.other("Open Antigravity app to read current quota")
         }
 
@@ -541,7 +563,12 @@ public struct AntigravityProvider: UsageProvider {
     }
 
     private func quota(from snapshot: AgyIDEQuotaSummarySnapshot) -> ProviderQuota? {
-        guard snapshot.groups.count >= 2 else {
+        guard snapshot.groups.count >= 2,
+              snapshot.groups.allSatisfy({ group in
+                  !group.buckets.isEmpty && group.buckets.allSatisfy {
+                      $0.remainingFraction.isFinite && (0...1).contains($0.remainingFraction)
+                  }
+              }) else {
             return nil
         }
         let groups = snapshot.groups.map { group in
@@ -558,6 +585,11 @@ public struct AntigravityProvider: UsageProvider {
                 }
             )
         }
+        guard let googleGroup = groups.first(where: { group in
+            group.windows.contains { $0.id.hasPrefix("gemini-") }
+        }), let thirdPartyGroup = groups.first(where: { group in
+            group.windows.contains { $0.id.hasPrefix("3p-") }
+        }) else { return nil }
         // 각 그룹별로 5h 윈도우를 우선 사용하고, 없으면 (무료 계정) 7d로 폴백.
         // 5h도 7d도 없으면 '--' 표시용 placeholder 사용.
         let fiveHourPlaceholder = QuotaWindow(
@@ -572,11 +604,11 @@ public struct AntigravityProvider: UsageProvider {
             usedPercent: nil,
             resetAt: nil
         )
-        let primary = summaryWindow(from: groups[0])
-            ?? summaryWindow7d(from: groups[0])
+        let primary = summaryWindow(from: googleGroup)
+            ?? summaryWindow7d(from: googleGroup)
             ?? fiveHourPlaceholder
-        let secondary = summaryWindow(from: groups[1])
-            ?? summaryWindow7d(from: groups[1])
+        let secondary = summaryWindow(from: thirdPartyGroup)
+            ?? summaryWindow7d(from: thirdPartyGroup)
             ?? sevenDayPlaceholder
         return ProviderQuota(
             providerID: providerID,
@@ -824,7 +856,7 @@ private struct AgyIDEQuotaSummarySnapshot {
     init?(data: Data) {
         guard
             let payload = try? JSONDecoder.agyDecoder.decode(AgyIDEQuotaSummaryResponse.self, from: data),
-            let groups = payload.response?.groups,
+            let groups = payload.response?.groups ?? payload.groups,
             groups.isEmpty == false
         else {
             return nil
@@ -839,6 +871,7 @@ private struct AgyIDEQuotaSummaryResponse: Decodable {
     }
 
     let response: Response?
+    let groups: [AgyIDEQuotaSummaryGroup]?
 }
 
 private struct AgyIDEQuotaSummaryGroup: Decodable {

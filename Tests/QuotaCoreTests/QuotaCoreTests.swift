@@ -371,6 +371,7 @@ func antigravityProviderUsesSharedModelBuckets() async throws {
         currentAccountURL: cacheDirectory.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: nil,
         ideMainLogURL: nil,
+        cloudEnabled: false,
         legacyFallbacksEnabled: true
     ).fetchQuota()
 
@@ -456,6 +457,7 @@ func antigravityProviderUsesCurrentAccountAndHistoryBuckets() async throws {
         currentAccountURL: currentAccountURL,
         usageExecutableURL: nil,
         ideMainLogURL: nil,
+        cloudEnabled: false,
         legacyFallbacksEnabled: true
     ).fetchQuota()
 
@@ -575,6 +577,7 @@ func antigravityProviderUsesAntigravityIDELocalQuotaSummary(currentVersion: Bool
         currentAccountURL: root.appendingPathComponent("missing_current_account.json"),
         usageExecutableURL: nil,
         ideMainLogURL: logURL,
+        cloudEnabled: false,
         ideSession: session,
         ideProcessArguments: {
             guard currentVersion else { return "" }
@@ -624,7 +627,8 @@ func antigravityProviderDoesNotAutomaticallyLaunchAgyWithoutIDE() async throws {
             historyDirectoryURLs: [],
             currentAccountURL: root.appendingPathComponent("missing_current_account.json"),
             usageExecutableURL: executableURL,
-            ideMainLogURL: nil
+            ideMainLogURL: nil,
+            cloudEnabled: false
         ).fetchQuota()
         Issue.record("Expected an Antigravity IDE availability failure")
     } catch {
@@ -691,6 +695,7 @@ func antigravityProviderPrefersLiveUsageOutput() async throws {
         usageExecutableURL: executableURL,
         usageTimeout: 5,
         ideMainLogURL: nil,
+        cloudEnabled: false,
         legacyFallbacksEnabled: true
     ).fetchQuota()
 
@@ -731,6 +736,7 @@ func antigravityProviderParsesTerminalRedrawUsageOutput() async throws {
         usageExecutableURL: executableURL,
         usageTimeout: 5,
         ideMainLogURL: nil,
+        cloudEnabled: false,
         legacyFallbacksEnabled: true
     ).fetchQuota()
 
@@ -776,6 +782,7 @@ func antigravityProviderParsesExhaustedRefreshOnlyUsageOutput() async throws {
         usageExecutableURL: executableURL,
         usageTimeout: 5,
         ideMainLogURL: nil,
+        cloudEnabled: false,
         legacyFallbacksEnabled: true
     ).fetchQuota()
 
@@ -834,6 +841,7 @@ func antigravityProviderParsesStandaloneZeroPercentUsageOutput() async throws {
         usageExecutableURL: executableURL,
         usageTimeout: 5,
         ideMainLogURL: nil,
+        cloudEnabled: false,
         legacyFallbacksEnabled: true
     ).fetchQuota()
 
@@ -886,6 +894,7 @@ func antigravityProviderPreservesResetTimerForAvailableRefreshOnlyGoogleBucket()
         usageExecutableURL: executableURL,
         usageTimeout: 5,
         ideMainLogURL: nil,
+        cloudEnabled: false,
         legacyFallbacksEnabled: true
     ).fetchQuota()
 
@@ -938,6 +947,7 @@ func antigravityProviderReadsResetTimerFromModelRowForAvailableGoogleBucket() as
         usageExecutableURL: executableURL,
         usageTimeout: 5,
         ideMainLogURL: nil,
+        cloudEnabled: false,
         legacyFallbacksEnabled: true
     ).fetchQuota()
 
@@ -981,6 +991,7 @@ func antigravityProviderStopsWhenAgyStartsOAuthFlow() async throws {
             usageExecutableURL: executableURL,
             usageTimeout: 5,
             ideMainLogURL: nil,
+            cloudEnabled: false,
             legacyFallbacksEnabled: true
         ).fetchQuota()
         Issue.record("Expected Antigravity OAuth flow failure")
@@ -1016,6 +1027,7 @@ func antigravityProviderSanitizesTimedOutTerminalOutput() async throws {
             usageExecutableURL: executableURL,
             usageTimeout: 1,
             ideMainLogURL: nil,
+            cloudEnabled: false,
             legacyFallbacksEnabled: true
         ).fetchQuota()
         Issue.record("Expected Antigravity timeout")
