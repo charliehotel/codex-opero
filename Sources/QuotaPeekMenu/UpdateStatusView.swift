@@ -8,12 +8,16 @@ struct UpdateStatusView: View {
 
     let currentVersion: AppVersion?
     let availableUpdate: AvailableUpdate?
+    let isChecking: Bool
+    let checkForUpdates: () -> Void
 
     var body: some View {
-        if let availableUpdate {
-            Button {
-                NSWorkspace.shared.open(availableUpdate.releaseURL)
-            } label: {
+        if isChecking {
+            Text("확인 중…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if let availableUpdate {
+            Button(action: checkForUpdates) {
                 Text(availableUpdate.displayString)
                     .font(.caption.weight(.semibold))
                     .monospacedDigit()
@@ -28,9 +32,9 @@ struct UpdateStatusView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(
-                "\(availableUpdate.latestVersion.displayString) 업데이트 가능, GitHub Releases 열기"
+                "\(availableUpdate.latestVersion.displayString) 업데이트 가능, 릴리즈 노트 보기"
             )
-            .accessibilityAddTraits(.isLink)
+            .help("새 버전 확인")
             .onAppear {
                 updateAnimation()
             }
@@ -38,10 +42,15 @@ struct UpdateStatusView: View {
                 updateAnimation()
             }
         } else if let currentVersion {
-            Text(currentVersion.displayString)
-                .font(.caption)
-                .monospacedDigit()
-                .foregroundStyle(.tertiary)
+            Button(action: checkForUpdates) {
+                Text(currentVersion.displayString)
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(currentVersion.displayString), 업데이트 확인")
+            .help("업데이트 확인")
         }
     }
 

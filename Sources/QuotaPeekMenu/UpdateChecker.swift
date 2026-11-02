@@ -17,6 +17,7 @@ final class UpdateChecker {
     private var checkTask: Task<Void, Never>?
     let currentVersion: AppVersion?
     private(set) var availableUpdate: AvailableUpdate?
+    private(set) var isCheckingManually = false
 
     init(
         defaults: UserDefaults = .standard,
@@ -72,29 +73,57 @@ final class UpdateChecker {
         }
 
         do {
-            let release = try await fetchLatestRelease()
-            defaults.set(now, forKey: Self.lastCheckedAtKey)
-
-            guard let currentVersion else {
-                return UpdateCheckPolicy.checkInterval
-            }
-
-            if let update = UpdateCheckPolicy.availableUpdate(
-                    latestRelease: release.versionInfo,
-                    currentVersion: currentVersion,
-                    fallbackURL: releasesURL
-            ) {
-                availableUpdate = update
-                defaults.set(update.latestVersion.description, forKey: Self.availableVersionKey)
-                defaults.set(update.releaseURL.absoluteString, forKey: Self.availableReleaseURLKey)
-            } else {
-                availableUpdate = nil
-                clearCachedUpdate()
-            }
+            try await apply(fetchLatestRelease(), checkedAt: now)
             return UpdateCheckPolicy.checkInterval
         } catch {
             return UpdateCheckPolicy.retryInterval
         }
+    }
+
+    /// Checks GitHub immediately, regardless of the daily schedule.
+    func checkNow(now: Date = Date()) async -> ManualUpdateCheckResult {
+        guard isCheckingManually == false else {
+            return .inProgress
+        }
+        isCheckingManually = true
+        defer { isCheckingManually = false }
+
+        guard let currentVersion else {
+            return .failed("현재 앱 버전을 확인할 수 없습니다.")
+        }
+        do {
+            let release = try await fetchLatestRelease()
+            guard let update = apply(release, checkedAt: now) else {
+                return .upToDate(currentVersion)
+            }
+            let preferKorean = Locale.preferredLanguages.first?.hasPrefix("ko") ?? false
+            return .available(UpdateOffer(
+                update: update,
+                notes: UpdateReleaseNotes.displayText(release.body ?? "", preferKorean: preferKorean),
+                asset: UpdateAssetSelector.dmgAsset(in: release.assets.map(\.info))
+            ))
+        } catch {
+            return .failed("GitHub에서 최신 버전 정보를 가져오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.")
+        }
+    }
+
+    @discardableResult
+    private func apply(_ release: LatestRelease, checkedAt now: Date) -> AvailableUpdate? {
+        defaults.set(now, forKey: Self.lastCheckedAtKey)
+        guard let currentVersion,
+              let update = UpdateCheckPolicy.availableUpdate(
+                  latestRelease: release.versionInfo,
+                  currentVersion: currentVersion,
+                  fallbackURL: releasesURL
+              ) else {
+            availableUpdate = nil
+            clearCachedUpdate()
+            return nil
+        }
+        availableUpdate = update
+        defaults.set(update.latestVersion.description, forKey: Self.availableVersionKey)
+        defaults.set(update.releaseURL.absoluteString, forKey: Self.availableReleaseURLKey)
+        return update
     }
 
     private func clearCachedUpdate() {
@@ -120,12 +149,42 @@ private struct LatestRelease: Decodable {
     let prerelease: Bool
     let draft: Bool
     let htmlURL: URL?
+    let body: String?
+    let assets: [Asset]
+
+    struct Asset: Decodable {
+        let name: String
+        let browserDownloadURL: URL
+        let size: Int
+        let digest: String?
+
+        enum CodingKeys: String, CodingKey {
+            case name, size, digest
+            case browserDownloadURL = "browser_download_url"
+        }
+
+        var info: ReleaseAssetInfo {
+            ReleaseAssetInfo(name: name, downloadURL: browserDownloadURL, size: size, digest: digest)
+        }
+    }
 
     enum CodingKeys: String, CodingKey {
         case tagName = "tag_name"
         case prerelease
         case draft
         case htmlURL = "html_url"
+        case body
+        case assets
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        tagName = try container.decode(String.self, forKey: .tagName)
+        prerelease = try container.decode(Bool.self, forKey: .prerelease)
+        draft = try container.decode(Bool.self, forKey: .draft)
+        htmlURL = try container.decodeIfPresent(URL.self, forKey: .htmlURL)
+        body = try container.decodeIfPresent(String.self, forKey: .body)
+        assets = try container.decodeIfPresent([Asset].self, forKey: .assets) ?? []
     }
 
     var versionInfo: ReleaseVersionInfo {
@@ -136,6 +195,19 @@ private struct LatestRelease: Decodable {
             releaseURL: htmlURL
         )
     }
+}
+
+struct UpdateOffer {
+    let update: AvailableUpdate
+    let notes: String
+    let asset: ReleaseAssetInfo?
+}
+
+enum ManualUpdateCheckResult {
+    case upToDate(AppVersion)
+    case available(UpdateOffer)
+    case failed(String)
+    case inProgress
 }
 
 private enum UpdateCheckError: Error {

@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         OnboardingWindowController.shared.showIfNeeded()
         UpdateChecker.shared.start()
+        UpdateFlowController.shared.reportPreviousInstallFailureIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -191,7 +192,9 @@ private struct ContentView: View {
             Spacer()
             UpdateStatusView(
                 currentVersion: updateChecker.currentVersion,
-                availableUpdate: updateChecker.availableUpdate
+                availableUpdate: updateChecker.availableUpdate,
+                isChecking: updateChecker.isCheckingManually,
+                checkForUpdates: { UpdateFlowController.shared.checkForUpdates() }
             )
         }
     }
