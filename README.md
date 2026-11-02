@@ -142,6 +142,14 @@ Requires macOS and an existing Codex, Claude, or Antigravity login on the local 
 ## Release Notes
 
 <details>
+  <summary>v0.2.10</summary>
+  <ul>
+    <li>Click the version in the menu footer to check for updates immediately. Show a confirmation when up to date, or the release notes with an update prompt when a newer version exists.</li>
+    <li>Download the release DMG to the Desktop, verify its size and SHA-256, then install and relaunch after validating the new app, restoring the previous app if replacement fails. See the <a href="./ReleaseNotes/v0.2.10.md">full release notes</a> for validation results and limits.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.9</summary>
   <ul>
     <li>Fix Claude Code repeatedly showing the <code>security</code> Keychain prompt for <code>Claude Code-credentials</code> even after <code>Always Allow</code>. Read and update Claude credentials through <code>/usr/bin/security</code>, the same tool Claude Code uses, so app rebuilds no longer rewrite the item's access control and partition lists.</li>

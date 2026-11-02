@@ -141,6 +141,14 @@ macOS 환경과 로컬의 기존 Codex, Claude 또는 Antigravity 로그인 상�
 ## 릴리즈 노트
 
 <details>
+  <summary>v0.2.10</summary>
+  <ul>
+    <li>메뉴 하단의 버전을 클릭하면 업데이트를 즉시 확인합니다. 최신 버전이면 안내창을, 새 버전이 있으면 릴리즈 노트와 함께 업데이트 여부를 표시합니다.</li>
+    <li>릴리즈 DMG를 데스크탑에 받아 크기와 SHA-256을 검증하고, 새 앱을 확인한 뒤 설치하고 다시 시작합니다. 교체에 실패하면 기존 앱으로 되돌립니다. 검증 결과와 한계는 <a href="./ReleaseNotes/v0.2.10.md">전체 릴리즈 노트</a>에서 확인할 수 있습니다.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.9</summary>
   <ul>
     <li>Claude Code에서 <code>Claude Code-credentials</code>에 대한 <code>security</code> 키체인 접근 요청이 <code>항상 허용</code> 후에도 반복되던 문제를 수정했습니다. Claude 인증정보를 Claude Code와 같은 <code>/usr/bin/security</code>로 읽고 갱신하여, 앱을 재빌드해도 항목의 접근 제어와 파티션 목록이 다시 작성되지 않습니다.</li>
