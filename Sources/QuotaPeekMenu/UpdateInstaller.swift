@@ -209,7 +209,7 @@ enum UpdateInstaller {
         }
         guard let version = (info["CFBundleShortVersionString"] as? String).flatMap(AppVersion.init),
               version == expectedVersion else {
-            throw UpdateError.invalidApp("버전이 \(expectedVersion.displayString)과(와) 다릅니다.")
+            throw UpdateError.invalidApp("버전이 예상한 버전(\(expectedVersion.displayString))과 다릅니다.")
         }
         guard run("/usr/bin/codesign", ["--verify", "--deep", "--strict", app.path]) == 0 else {
             throw UpdateError.invalidApp("코드 서명이 유효하지 않습니다.")

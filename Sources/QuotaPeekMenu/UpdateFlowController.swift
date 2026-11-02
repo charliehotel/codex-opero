@@ -23,7 +23,7 @@ final class UpdateFlowController {
             case .upToDate(let version):
                 showAlert(
                     title: "최신 버전을 사용하고 있습니다",
-                    message: "codex-opero \(version.displayString)이(가) 최신 버전입니다."
+                    message: "현재 사용 중인 버전은 \(version.displayString)입니다."
                 )
             case .failed(let message):
                 showAlert(title: "업데이트를 확인할 수 없습니다", message: message, style: .warning)
@@ -54,7 +54,7 @@ final class UpdateFlowController {
 
     private func offerUpdate(_ offer: UpdateOffer) async {
         let alert = NSAlert()
-        alert.messageText = "새 버전 \(offer.update.latestVersion.displayString)이(가) 발견되었습니다"
+        alert.messageText = "새 버전을 발견했습니다: \(offer.update.latestVersion.displayString)"
         alert.informativeText = "현재 버전은 \(offer.update.currentVersion.displayString)입니다. 업데이트하시겠습니까?"
         alert.accessoryView = Self.releaseNotesView(offer.notes)
         alert.addButton(withTitle: offer.asset == nil ? "릴리즈 페이지 열기" : "업데이트")
@@ -105,7 +105,7 @@ final class UpdateFlowController {
         guard let installTarget = UpdateInstaller.installTarget() else {
             showAlert(
                 title: "다운로드가 완료되었습니다",
-                message: "데스크탑에 \(dmgURL.lastPathComponent)을(를) 저장했습니다. 현재 위치의 앱은 자동으로 교체할 수 없어 DMG를 엽니다."
+                message: "데스크탑에 저장했습니다: \(dmgURL.lastPathComponent)\n현재 위치의 앱은 자동으로 교체할 수 없어 DMG를 엽니다."
             )
             NSWorkspace.shared.open(dmgURL)
             return
@@ -113,7 +113,7 @@ final class UpdateFlowController {
 
         let alert = NSAlert()
         alert.messageText = "다운로드가 완료되었습니다"
-        alert.informativeText = "데스크탑에 \(dmgURL.lastPathComponent)을(를) 저장했습니다. 지금 \(version.displayString)을(를) 설치하고 앱을 다시 시작할까요?"
+        alert.informativeText = "데스크탑에 저장했습니다: \(dmgURL.lastPathComponent)\n지금 설치하고 앱을 다시 시작할까요?"
         alert.addButton(withTitle: "설치 후 재시작")
         alert.addButton(withTitle: "나중에")
         guard run(alert) == .alertFirstButtonReturn else {
