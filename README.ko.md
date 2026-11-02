@@ -141,6 +141,14 @@ macOS 환경과 로컬의 기존 Codex, Claude 또는 Antigravity 로그인 상�
 ## 릴리즈 노트
 
 <details>
+  <summary>v0.2.9</summary>
+  <ul>
+    <li>Claude Code에서 <code>Claude Code-credentials</code>에 대한 <code>security</code> 키체인 접근 요청이 <code>항상 허용</code> 후에도 반복되던 문제를 수정했습니다. Claude 인증정보를 Claude Code와 같은 <code>/usr/bin/security</code>로 읽고 갱신하여, 앱을 재빌드해도 항목의 접근 제어와 파티션 목록이 다시 작성되지 않습니다.</li>
+    <li>Claude Code가 동시에 변경한 인증정보를 덮어쓰지 않도록 보호하고, 갱신 결과를 다시 읽어 확인합니다. 검증 결과와 한계는 <a href="./ReleaseNotes/v0.2.9.md">전체 릴리즈 노트</a>에서 확인할 수 있습니다.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.8</summary>
   <ul>
     <li>Claude OAuth 토큰을 만료 직전 또는 <code>401</code> 응답 시 자동 갱신합니다. 원래 키체인 항목의 데이터만 갱신하여 접근 제어와 <code>항상 허용</code> 권한을 보존하고, 인증정보의 다른 필드와 동시 계정·인증정보 변경을 보호합니다.</li>

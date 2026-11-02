@@ -142,6 +142,14 @@ Requires macOS and an existing Codex, Claude, or Antigravity login on the local 
 ## Release Notes
 
 <details>
+  <summary>v0.2.9</summary>
+  <ul>
+    <li>Fix Claude Code repeatedly showing the <code>security</code> Keychain prompt for <code>Claude Code-credentials</code> even after <code>Always Allow</code>. Read and update Claude credentials through <code>/usr/bin/security</code>, the same tool Claude Code uses, so app rebuilds no longer rewrite the item's access control and partition lists.</li>
+    <li>Keep protection against overwriting credentials changed concurrently by Claude Code, and verify each update by reading it back. See the <a href="./ReleaseNotes/v0.2.9.md">full release notes</a> for validation results and limits.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.8</summary>
   <ul>
     <li>Automatically refresh Claude OAuth tokens near expiry or after <code>401</code>. Update the original Keychain item in place to preserve access controls and <code>Always Allow</code> grants, preserve unrelated credential fields, and protect concurrent account or credential changes.</li>

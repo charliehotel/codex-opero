@@ -6,7 +6,6 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PRODUCT_NAME="codex-opero"
 APP_NAME="${PRODUCT_NAME}.app"
 BUILD_DIR="${ROOT_DIR}/.build"
-RELEASE_DIR="${BUILD_DIR}/release"
 APP_DIR="${ROOT_DIR}/${APP_NAME}"
 DIST_DIR="${ROOT_DIR}/dist"
 CONTENTS_DIR="${APP_DIR}/Contents"
@@ -14,7 +13,6 @@ MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 SOURCE_PLIST="${ROOT_DIR}/Resources/Info.plist"
 TARGET_PLIST="${CONTENTS_DIR}/Info.plist"
-EXECUTABLE_PATH="${RELEASE_DIR}/${PRODUCT_NAME}"
 ICON_SOURCE="${ROOT_DIR}/icon.png"
 TRAY_ICON_SOURCES=("${ROOT_DIR}"/Resources/TrayIcon-*.png)
 POPUP_IMAGE_SOURCE="${ROOT_DIR}/Resources/popup.png"
@@ -41,13 +39,26 @@ create_iconset() {
 }
 
 build_app_bundle() {
+    local SDK_PATH RELEASE_DIR EXECUTABLE_PATH
+    local -a BUILD_OPTIONS
+    SDK_PATH="$(xcrun --show-sdk-path)"
+    # Work around swiftlang/swift-driver#2240 until the bundled driver is fixed.
+    # Swift 6.4 swiftbuild can stamp the deployment target as the linked SDK.
+    BUILD_OPTIONS=(--package-path "${ROOT_DIR}" -c release --product "${PRODUCT_NAME}"
+        --build-system native --sdk "${SDK_PATH}"
+        --scratch-path "${BUILD_DIR}/package-native")
+
     echo "Building ${PRODUCT_NAME} in release mode..."
-    swift build -c release --product "${PRODUCT_NAME}"
+    swift build "${BUILD_OPTIONS[@]}"
+    RELEASE_DIR="$(swift build "${BUILD_OPTIONS[@]}" --show-bin-path)"
+    EXECUTABLE_PATH="${RELEASE_DIR}/${PRODUCT_NAME}"
 
     if [[ ! -x "${EXECUTABLE_PATH}" ]]; then
         echo "Expected executable not found: ${EXECUTABLE_PATH}" >&2
         exit 1
     fi
+
+    /bin/zsh "${ROOT_DIR}/Scripts/verify_build_sdk.sh" "${EXECUTABLE_PATH}"
 
     if [[ ! -f "${ICON_SOURCE}" ]]; then
         echo "Expected icon not found: ${ICON_SOURCE}" >&2

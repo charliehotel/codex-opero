@@ -222,7 +222,7 @@ struct ClaudeProviderTests {
         let originalFile = try Data(contentsOf: fixture.file)
         fixture.respond { request in
             if request.url?.path == "/v1/oauth/token" {
-                fixture.state.keychain = .init(data: try fixture.credentials(access: "cli-access", refresh: "cli-refresh"), persistentReference: Data("new-item".utf8))
+                fixture.state.keychain = .init(data: try fixture.credentials(access: "cli-access", refresh: "cli-refresh"), identity: Data("new-item".utf8))
                 return .token()
             }
             #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer cli-access")
@@ -269,11 +269,11 @@ struct ClaudeProviderTests {
         let fixture = try ClaudeFixture()
         defer { fixture.cleanUp() }
         let fileBefore = try Data(contentsOf: fixture.file)
-        fixture.state.keychain = .init(data: try fixture.credentials(expired: true), persistentReference: Data("original-item".utf8))
+        fixture.state.keychain = .init(data: try fixture.credentials(expired: true), identity: Data("original-item".utf8))
         fixture.respond { request in request.url?.path == "/v1/oauth/token" ? .token() : .usage }
         _ = try await fixture.provider().fetchQuota()
         #expect(fixture.state.writes == 1)
-        #expect(fixture.state.keychain?.persistentReference == Data("original-item".utf8))
+        #expect(fixture.state.keychain?.identity == Data("original-item".utf8))
         let data = try #require(fixture.state.keychain?.data)
         let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let oauth = try #require(json["claudeAiOauth"] as? [String: Any])
@@ -286,10 +286,10 @@ struct ClaudeProviderTests {
     @Test func replacedKeychainItemIsNotOverwritten() async throws {
         let fixture = try ClaudeFixture()
         defer { fixture.cleanUp() }
-        fixture.state.keychain = .init(data: try fixture.credentials(expired: true), persistentReference: Data("original-item".utf8))
+        fixture.state.keychain = .init(data: try fixture.credentials(expired: true), identity: Data("original-item".utf8))
         fixture.respond { request in
             if request.url?.path == "/v1/oauth/token" {
-                fixture.state.keychain = .init(data: try fixture.credentials(access: "cli-access", refresh: "cli-refresh"), persistentReference: Data("replacement-item".utf8))
+                fixture.state.keychain = .init(data: try fixture.credentials(access: "cli-access", refresh: "cli-refresh"), identity: Data("replacement-item".utf8))
                 return .token()
             }
             #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer cli-access")
@@ -297,7 +297,7 @@ struct ClaudeProviderTests {
         }
         _ = try await fixture.provider().fetchQuota()
         #expect(fixture.state.writes == 0)
-        #expect(fixture.state.keychain?.persistentReference == Data("replacement-item".utf8))
+        #expect(fixture.state.keychain?.identity == Data("replacement-item".utf8))
     }
 
     @Test func metadataChangedDuringRefreshIsPreserved() async throws {
@@ -319,14 +319,14 @@ struct ClaudeProviderTests {
     @Test func metadataChangedAtKeychainUpdateIsMergedWithoutAnotherRefresh() async throws {
         let fixture = try ClaudeFixture()
         defer { fixture.cleanUp() }
-        fixture.state.keychain = .init(data: try fixture.credentials(expired: true), persistentReference: Data("original-item".utf8))
+        fixture.state.keychain = .init(data: try fixture.credentials(expired: true), identity: Data("original-item".utf8))
         fixture.respond { request in request.url?.path == "/v1/oauth/token" ? .token() : .usage }
         let provider = fixture.provider(updateKeychain: { expected, data in
             let item = try #require(fixture.state.keychain)
             var json = try #require(JSONSerialization.jsonObject(with: item.data) as? [String: Any])
             if json["lateMetadata"] == nil {
                 json["lateMetadata"] = "keep"
-                fixture.state.keychain = .init(data: try JSONSerialization.data(withJSONObject: json), persistentReference: item.persistentReference)
+                fixture.state.keychain = .init(data: try JSONSerialization.data(withJSONObject: json), identity: item.identity)
             }
             return fixture.state.update(expected, data)
         })
@@ -343,14 +343,14 @@ struct ClaudeProviderTests {
     @Test func accountChangedAtKeychainUpdateUsesNewCredentials() async throws {
         let fixture = try ClaudeFixture()
         defer { fixture.cleanUp() }
-        fixture.state.keychain = .init(data: try fixture.credentials(expired: true), persistentReference: Data("original-item".utf8))
+        fixture.state.keychain = .init(data: try fixture.credentials(expired: true), identity: Data("original-item".utf8))
         fixture.respond { request in
             if request.url?.path == "/v1/oauth/token" { return .token() }
             #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer cli-access")
             return .usage
         }
         let provider = fixture.provider(updateKeychain: { expected, data in
-            fixture.state.keychain = .init(data: try fixture.credentials(access: "cli-access", refresh: "cli-refresh"), persistentReference: expected.persistentReference)
+            fixture.state.keychain = .init(data: try fixture.credentials(access: "cli-access", refresh: "cli-refresh"), identity: expected.identity)
             return fixture.state.update(expected, data)
         })
         _ = try await provider.fetchQuota()
@@ -425,8 +425,8 @@ private final class ClaudeTestState: @unchecked Sendable {
     func record(_ request: URLRequest) { lock.withLock { requests.append(request.url!.path) } }
     func update(_ expected: KeychainReader.Password, _ data: Data) -> Bool {
         lock.withLock {
-            guard item?.persistentReference == expected.persistentReference, item?.data == expected.data else { return false }
-            item = .init(data: data, persistentReference: expected.persistentReference)
+            guard item?.identity == expected.identity, item?.data == expected.data else { return false }
+            item = .init(data: data, identity: expected.identity)
             writeCount += 1
             return true
         }

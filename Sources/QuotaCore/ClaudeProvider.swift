@@ -2,6 +2,7 @@ import Foundation
 
 public struct ClaudeProvider: UsageProvider {
     public let providerID: ProviderID = .claude
+    private static let keychainService = "Claude Code-credentials"
 
     private let session: URLSession
     private let store: ClaudeCredentialStore
@@ -15,8 +16,8 @@ public struct ClaudeProvider: UsageProvider {
     ) {
         self.init(
             session: session, credentialsFileURL: credentialsFileURL,
-            readKeychain: { try KeychainReader.genericPasswordItem(service: "Claude Code-credentials") },
-            updateKeychain: { try KeychainReader.updateGenericPassword($0, data: $1) },
+            readKeychain: { try SecurityCLIKeychain.genericPasswordItem(service: Self.keychainService) },
+            updateKeychain: { try SecurityCLIKeychain.updateGenericPassword($0, service: Self.keychainService, data: $1) },
             now: { Date() }, coordinator: .shared
         )
     }
@@ -230,7 +231,7 @@ private struct ClaudeCredentialStore: Sendable {
         }
         guard !oauth.accessToken.isEmpty else { return nil }
         return Credentials(data: data, oauth: oauth, keychain: keychain,
-                           key: keychain.map { "keychain:" + $0.persistentReference.base64EncodedString() } ?? fileURL.standardizedFileURL.path)
+                           key: keychain.map { "keychain:" + $0.identity.base64EncodedString() } ?? fileURL.standardizedFileURL.path)
     }
 
     static func json(_ data: Data) throws -> [String: Any] {
