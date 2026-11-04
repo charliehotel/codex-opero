@@ -1,33 +1,15 @@
 import Foundation
-import Security
 
 enum KeychainReader {
     struct Password: Sendable {
         let data: Data
         let identity: Data
     }
-
-    static func genericPassword(service: String, account: String? = nil) throws -> Data {
-        var query: [CFString: Any] = [
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecReturnData: true,
-            kSecMatchLimit: kSecMatchLimitOne,
-        ]
-        if let account { query[kSecAttrAccount] = account }
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status != errSecItemNotFound else { throw ProviderError.credentialsMissing }
-        guard status == errSecSuccess, let data = item as? Data else {
-            throw ProviderError.other("keychain error \(status)")
-        }
-        return data
-    }
 }
 
-/// Accesses keychain items through `/usr/bin/security`, the same client Claude Code uses.
-/// Going through the Apple-signed tool keeps this ad-hoc signed app out of the item's ACL and
-/// partition list, so rebuilding the app no longer rewrites them and re-prompts Claude Code.
+/// Accesses keychain items through `/usr/bin/security`, the same client Claude Code and agy use.
+/// Going through the Apple-signed tool keeps this ad-hoc signed app, whose identity changes with
+/// every build, out of item ACLs and partition lists, so updating the app no longer re-prompts.
 enum SecurityCLIKeychain {
     private static let executable = URL(fileURLWithPath: "/usr/bin/security")
     private static let itemNotFound: Int32 = 44
@@ -50,6 +32,16 @@ enum SecurityCLIKeychain {
             return false
         }
         guard identity(service: service, account: account) == expected.identity, current == expected.data else { return false }
+        try setGenericPassword(service: service, account: account, data: data)
+        return true
+    }
+
+    static func genericPassword(service: String, account: String) throws -> Data {
+        try password(service: service, account: account)
+    }
+
+    /// Creates or updates the item; an existing item keeps its ACL and `Always Allow` grants.
+    static func setGenericPassword(service: String, account: String, data: Data) throws {
         let hex = data.map { String(format: "%02x", $0) }.joined()
         let line = "add-generic-password -U -a \"\(account)\" -s \"\(service)\" -X \(hex)\n"
         let status: Int32
@@ -59,10 +51,9 @@ enum SecurityCLIKeychain {
             status = try run(["add-generic-password", "-U", "-a", account, "-s", service, "-X", hex]).status
         }
         // `security -i` reports success even when the command inside fails, so confirm by reading back.
-        guard status == 0, try genericPasswordItem(service: service).data == data else {
+        guard status == 0, try password(service: service, account: account) == data else {
             throw ProviderError.other("keychain update failed")
         }
-        return true
     }
 
     private static func identity(service: String, account: String) -> Data {

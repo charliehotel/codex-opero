@@ -1,6 +1,5 @@
 import CryptoKit
 import Foundation
-import Security
 import SQLite3
 
 struct AgyOAuthToken: Codable, Equatable, Sendable {
@@ -36,11 +35,13 @@ struct AgyCloudCredentials: Codable, Sendable {
 
 enum AgyCredentialStore {
     private static let cacheService = "codex-opero.AntigravityOAuth"
+    // agy stores its login under this account; the refreshed-token cache reuses it.
+    private static let account = "antigravity"
 
     static func load() throws -> AgyCloudCredentials {
         let source: AgyOAuthToken
         do {
-            let data = try KeychainReader.genericPassword(service: "gemini", account: "antigravity")
+            let data = try SecurityCLIKeychain.genericPassword(service: "gemini", account: account)
             source = try decodeKeychain(data)
         } catch ProviderError.credentialsMissing {
             let root = FileManager.default.homeDirectoryForCurrentUser
@@ -57,29 +58,22 @@ enum AgyCredentialStore {
         let credentials = AgyCloudCredentials(token: source)
         // Keep refreshed tokens separate; Antigravity owns its SQLite and CLI credentials.
         do {
-            let data = try KeychainReader.genericPassword(service: cacheService)
+            let data = try SecurityCLIKeychain.genericPassword(service: cacheService, account: account)
             let cached = try JSONDecoder().decode(AgyCloudCredentials.self, from: data)
             return credentials.mergingRefreshed(cached)
-        } catch ProviderError.credentialsMissing {
+        } catch {
+            // A missing, denied, or malformed cache only costs an extra token refresh.
             return credentials
         }
     }
 
     static func save(_ credentials: AgyCloudCredentials) throws {
-        let query: [CFString: Any] = [
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrService: cacheService,
-        ]
-        let data = try JSONEncoder().encode(credentials)
-        var status = SecItemUpdate(query as CFDictionary, [kSecValueData: data] as CFDictionary)
-        if status == errSecItemNotFound {
-            var item = query
-            item[kSecAttrAccount] = "antigravity"
-            item[kSecValueData] = data
-            status = SecItemAdd(item as CFDictionary, nil)
-        }
-        guard status == errSecSuccess else {
-            throw ProviderError.other("Could not save Antigravity token (keychain \(status))")
+        do {
+            try SecurityCLIKeychain.setGenericPassword(
+                service: cacheService, account: account, data: JSONEncoder().encode(credentials)
+            )
+        } catch {
+            throw ProviderError.other("Could not save Antigravity token (\(error))")
         }
     }
 
