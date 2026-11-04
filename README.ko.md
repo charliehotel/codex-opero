@@ -141,6 +141,14 @@ macOS 환경과 로컬의 기존 Codex, Claude 또는 Antigravity 로그인 상�
 ## 릴리즈 노트
 
 <details>
+  <summary>v0.2.11</summary>
+  <ul>
+    <li>앱 업데이트 후 Antigravity의 <code>gemini</code> 키체인 접근 요청이 <code>항상 허용</code> 후에도 다시 표시되던 문제를 수정했습니다. Claude와 같이 <code>/usr/bin/security</code>로 agy 로그인을 읽고 갱신 토큰 캐시를 갱신하며, 캐시를 읽을 수 없으면 원본 로그인으로 진행합니다.</li>
+    <li>업데이트 안내 문구를 자연스럽게 다듬었습니다. 검증 결과와 한계는 <a href="./ReleaseNotes/v0.2.11.md">전체 릴리즈 노트</a>에서 확인할 수 있습니다.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.10</summary>
   <ul>
     <li>메뉴 하단의 버전을 클릭하면 업데이트를 즉시 확인합니다. 최신 버전이면 안내창을, 새 버전이 있으면 릴리즈 노트와 함께 업데이트 여부를 표시합니다.</li>

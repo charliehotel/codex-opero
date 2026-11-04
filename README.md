@@ -142,6 +142,14 @@ Requires macOS and an existing Codex, Claude, or Antigravity login on the local 
 ## Release Notes
 
 <details>
+  <summary>v0.2.11</summary>
+  <ul>
+    <li>Fix the Antigravity <code>gemini</code> Keychain prompt reappearing after app updates even after <code>Always Allow</code>. Read the agy login and update the refreshed-token cache through <code>/usr/bin/security</code>, as with Claude, and continue with the original login when the cache cannot be read.</li>
+    <li>Polish the Korean update alert wording. See the <a href="./ReleaseNotes/v0.2.11.md">full release notes</a> for validation results and limits.</li>
+  </ul>
+</details>
+
+<details>
   <summary>v0.2.10</summary>
   <ul>
     <li>Click the version in the menu footer to check for updates immediately. Show a confirmation when up to date, or the release notes with an update prompt when a newer version exists.</li>
